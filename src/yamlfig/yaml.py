@@ -1,9 +1,15 @@
 import yaml
+import re
+import tokenize
 
-from .basic_nodes import *
-from .basic_nodes import _fstr_regex
-from .dynamic_nodes import *
+#from .nodes.basic_nodes import *
+#from .basic_nodes import _fstr_regex
+#from .nodes.dynamic_nodes import *
 from .config import Config
+from .nodes.node import ConfigNode
+
+
+_fstr_regex = re.compile(r"^\s*f(['\"]).*\1\s*$")
 
 
 def _maybe_parse_scalar(loader, node, reparse=True):
@@ -116,6 +122,18 @@ def _include_constructor(loader, node):
     value = loader.construct_scalar(node)
     return IncludeNode(value)
 
+def _metadata_constructor(loader, tag_sufix, node):
+    data = None
+    if isinstance(node, yaml.MappingNode):
+        data = loader.construct_mapping(node, deep=True)
+    elif isinstance(node, yaml.SequenceNode):
+        data = loader.construct_sequence(node, deep=True)
+    elif isinstance(node, yaml.ScalarNode):
+        data = _maybe_parse_scalar(loader, node, reparse=False)
+
+    import pickle
+    return ConfigNode(data, idx=loader.context.get_current_stage_idx(), metadata=pickle.loads(bytes.fromhex(tag_sufix)))
+
 yaml.add_constructor('!eval', _eval_contructor)
 yaml.add_implicit_resolver('!fstr', _fstr_regex)
 yaml.add_constructor('!fstr', _fstr_constructor)
@@ -133,6 +151,7 @@ yaml.add_constructor('!del', _del_constructor)
 yaml.add_constructor('!append', _append_constructor)
 yaml.add_constructor('!weak', _weak_constructor)
 yaml.add_constructor('!include', _include_constructor)
+yaml.add_multi_constructor('!metadata', _metadata_constructor)
 
 
 def _dynamic_representer(dumper, data):
@@ -156,11 +175,85 @@ def _weak_representer(dumper, data):
     else:
         return dumper.represent_scalar('!weak', data.value)
 
-yaml.add_multi_representer(Dynamic, _dynamic_representer)
-yaml.add_representer(FailIfUsed, _unused_representer)
-yaml.add_representer(_Config, _config_representer)
-yaml.add_representer(Del, _del_representer)
-yaml.add_representer(Weak, _weak_representer)
+#yaml.add_multi_representer(DynamicNode, _dynamic_representer)
+#yaml.add_representer(FailIfUsedNode, _unused_representer)
+#yaml.add_representer(_Config, _config_representer)
+#yaml.add_representer(DelNode, _del_representer)
+#yaml.add_representer(WeakNode, _weak_representer)
 
-def parse_config(data):
-    return tuple(yaml.load_all(data, loader=yaml.Loader))
+def _get_metadata_end(data, beg):
+    _beg = beg+2
+    def _readline():
+        nonlocal _beg
+        end = data.find('}}', _beg)
+        if end == -1:
+            end = len(data)
+        else:
+            end += 2
+
+        ret = data[_beg:end]
+        _beg = end
+        return ret
+         
+    last_close = False
+    end = None
+    for token in tokenize.tokenize(_readline):
+        if token.type == 53 and token.string == '}':
+            if last_close:
+                end = _beg
+                break
+            else:
+                last_close = True
+        else:
+            last_close = False
+
+    return end
+
+def _get_metadatas_content(data):
+    _metadata_tag = '!metadata'
+    curr_pos = data.find(_metadata_tag)
+    while curr_pos != -1:
+        beg = curr_pos + len(_metadata_tag)
+        if data[beg] != ':':
+            if data[beg:beg+2] != '{{':
+                raise ValueError(f'Metadata tag should be followed by "{{{{" at character: {curr_pos}')
+            end = _get_metadata_end(data, beg)
+            if end is None:
+                raise ValueError(f'Cannot find the end of a !metadata node which begins at: {curr_pos}')
+            
+            yield beg, end
+
+        curr_pos = data.find(_metadata_tag, end+1)
+
+def _encode_metadata(data):
+    import pickle
+
+    ranges = list(_get_metadatas_content(data))
+    offset = 0
+    for beg, end in ranges:
+        beg += offset
+        end += offset
+
+        repl = ':' + pickle.dumps(eval(data[beg:end])).hex()
+        orig_len = end-beg
+        repl_len = len(repl)
+        data[beg:end] = repl
+        offset += repl_len - orig_len
+
+    return data
+
+class YamlfigLoader(yaml.Loader):
+    def construct_document(self, node):
+        return Config(super().construct_document(node))
+
+def parse(data, builder):
+    if not isinstance(data, str):
+        data = data.read()
+    
+    data = _encode_metadata(data)
+    def get_loader(stream):
+        loader = yaml.Loader(stream)
+        loader.context = builder
+        return loader
+
+    return yaml.load_all(data, Loader=get_loader)
