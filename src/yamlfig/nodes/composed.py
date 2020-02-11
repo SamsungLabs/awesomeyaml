@@ -1,4 +1,5 @@
 import re
+import collections
 
 from .node import ConfigNode
 from ..namespace import Namespace, staticproperty
@@ -7,8 +8,8 @@ from ..namespace import Namespace, staticproperty
 class ComposedNode(ConfigNode):
     _path_component_regex = re.compile(r'''
                 # the available options are:
-                    (?:^|(?<=\.)) # ...if it is either at the beginning or preceeded by a dot (do not capture)
-                    ( [a-zA-Z0-9_]+ ) # a textual indentifier (captured by the fist capture group)
+                    (?:^|(?<=\.)) # ...if it is either at the beginning or preceded by a dot (do not capture)
+                    ( [a-zA-Z0-9_]+ ) # a textual identifier (captured by the fist capture group)
                 | # OR...
                     \[ (-?[0-9]+) \] # a (possibly negative) integer in [] (with second capture group catching the integer inside)
                 | # OR...
@@ -35,9 +36,9 @@ class ComposedNode(ConfigNode):
                     raise ValueError(f'Invalid path: {path_str!r}')
                 end = match.end()
 
-            # the path is fine at the begining and internally doesn't have any "gaps" but has an incorect suffix
+            # the path is fine at the begining and internally doesn't have any "gaps" but has an incorrect suffix
             # (i.e. a part at the end which doesn't match our regular expression)
-            if end != len(path_str):
+            if path_str and end != len(path_str):
                 raise ValueError(f'Invalid path: {path_str!r}')
 
             matches = _matches_cache
@@ -64,8 +65,51 @@ class ComposedNode(ConfigNode):
             return f'[{childname}]'
         return ('.' if str(myname) else '') + str(childname)
 
+    @staticmethod
+    def get_list_path(*path, check_types=True):
+        if not path:
+            return []
+        if len(path) == 1:
+            if not isinstance(path[0], int):
+                path = path[0]
+
+        if path is None:
+            return []
+        if not isinstance(path, collections.Sequence) or isinstance(path, str):
+            # split_path should only return str and ints so we don't need to check for types
+            path = ComposedNode.split_path(str(path))
+        elif check_types:
+            for i, c in enumerate(path):
+                # we need to check it because if something is not a string nor an int it's ambiguous which casting should be done
+                if not isinstance(c, str) and (not isinstance(c, int) or isinstance(c, bool)):
+                    raise ValueError(f'node path should be a list of ints and/or str only, got {type(c)} at position {i}: {c}')
+
+        return path
+
+    @staticmethod
+    def get_str_path(*path, check_types=True):
+        if not path:
+            return ''
+        if len(path) == 1:
+            path = path[0]
+
+        if path is None:
+            return ''
+        if isinstance(path, int):
+            return ComposedNode._get_child_accessor(path)
+        if isinstance(path, collections.Sequence) and not isinstance(path, str):
+            return ComposedNode.split_path(path)
+
+        if check_types and not isinstance(path, str):
+            raise ValueError(f'Unexpected type: {type(path)}, expected int, sequence or str')
+        return path
+
     def __init__(self, children, **kwargs):
         super().__init__(**kwargs)
+        kwargs.pop('idx', None)
+        kwargs.pop('metadata', None)
+        kwargs.setdefault('_nodes_cache', {})
+        kwargs.setdefault('_force_new', False)
         self._children = { name: ConfigNode(child, **kwargs) for name, child in children.items() }
 
     class node_info(Namespace):
@@ -95,42 +139,47 @@ class ComposedNode(ConfigNode):
         def has_child(self, name):
             return name in self._children
 
-        def get_node(self, path_str_or_list, intermediate=False, names=False, incomplete=None):
-            ''' If at any point 
+        def get_node(self, *path, intermediate=False, names=False, incomplete=None):
+            ''' Inputs:
+                    - `path` either a list of names (str or int) which should be looked up, or a str equivalent to calling ComposedNode.join_path on an analogical list
+                    - `intermediate` if True, returned is a list of nodes accessed (including self), in order of accessing, otherwise only the final node is returned (i.e. the last element of the list)
+                    - `names` if True, returned are tuples of `(node, name, path)`, where `node` is an object represting a node with name `name` (relative to its parent) and path `path` (list of names, relative to the self),
+                        otherwise only the node object is returned.
+                        This option applies to both cases: with and without `intermediate` set to True - in both cases either the single value returned, or all the values in the returned list, are either tuples of single objects.
+                        If `intermediate` is True, or `path` is empty list/None, `self` can be also returned in which case `name` is None and `path` is an empty list.
+                    - `incomplete` if evaluates to True and a node with path `path` cannot be found, returns the first missing node as `None` (if `names` is False) or `(None, name, path)` - in case `intermediate` is also set to True,
+                        the last element of the returned list will be the first missing node with the rest of the list populated as usual. If `incomplete` is `None` and the node doesn't exist, `None` is returned (`intermediate` and `names` are ignored in that case),
+                        otherwise a `KeyError` is raised.
+
+                Returns:
+                    - a node found by following path `path`, optionally together with its name and the full path (if `names` is True), if the node exists,
+                    - otherwise if `incomplete` is set to True, a node "found" is the first missing node and is returned as `None` (again, optionally with name and a full path),
+                    - regardless of whether a node was found or None was used to indicated a missing node, if `intermediate` is set to True returned is a list of all nodes
+                        which were accessed (in order of accessing) before the final node was reached - this includes `self`, also each node can be returned either on its own or as a tuple together with their names and paths
+
+                Raises:
+                    `KeyError` if node cannot be found and `incomplete` evaluates to False and is not None
             '''
-            name = None
-            if not isinstance(path_str_or_list, list):
-                name = str(path_str_or_list)
-                path = ComposedNode.split_path(name)
-            else:
-                path = list(map(str, path_str_or_list))
+            path = ComposedNode.get_list_path(*path)
 
             ret = []
             def _add(child, name):
                 if names:
-                    path = ''
+                    path = []
                     if ret:
-                        path = ret[-1][2] + ret[-1][0]._get_child_accessor(childname=name, myname=ret[-1][2])
+                        path = ret[-1][2] + [name]
                     ret.append((child, name, path))
                 else:
                     ret.append(child)
             
-            _add(self, '')
+            _add(self, None)
             node = self
             found = True
             for component in path:
-                if not isinstance(node, ComposedNode):
+                if not isinstance(node, ComposedNode) or not node.node_info.has_child(component):
                     _add(None, component)
+                    found = False
                     break
-
-                if not node.node_info.has_child(component):
-                    try:
-                        component = int(component)
-                        if not node.node_info.has_child(component):
-                            raise
-                    except:
-                        _add(None, component)
-                        break
 
                 node = node.node_info.get_child(component)
                 _add(node, component)
@@ -139,42 +188,82 @@ class ComposedNode(ConfigNode):
                 if incomplete is None:
                     return None
 
-                raise KeyError(f'{name or ".".join(path)!r} does not exist within {self!r}')
+                raise KeyError(f'{ComposedNode.join_path(path)!r} does not exist within {self!r}')
 
             return ret if intermediate else ret[-1]
 
+        def get_first_not_missing_node(self, *path, intermediate=False, names=False):
+            def _get_node(n):
+                return n if not names else n[0]
+            nodes = self.node_info.get_node(*path, intermediate=True, names=names, incomplete=True)
+            assert len(nodes) >= 2
+            if _get_node(nodes[-1]) is not None:
+                return nodes[-1] if not intermediate else nodes
 
-        def named_nodes(self, prefix='', recurse=True, include_self=True, allow_duplicates=True):
+            nodes.pop()
+            assert _get_node(nodes[-1]) is not None
+            return nodes[-1] if not intermediate else nodes
+
+        def remove_node(self, *path):
+            nodes = self.nodes_info.get_node(*path, intermediate=True, names=True, incomplete=None)
+            if nodes is None:
+                return None
+            assert len(nodes) >= 2
+            node, name, _ = nodes[-1]
+            assert node is not None
+            parent, _, _ = nodes[-2]
+            return parent.node_info.remove_child(name)
+
+        def filter_nodes(self, condition, prefix=None):
+            prefix = prefix or []
+            to_del = []
+            for name, child in self.node_info.named_children():
+                child_path = prefix + [name]
+                keep = False
+                if condition(child, child_path):
+                    keep = True
+                elif not child.node_info.is_leaf:
+                    child.filter(condition, prefix=child_path)
+                    keep = bool(child)
+
+                if not keep:
+                    to_del.append(name)
+
+            for name in reversed(to_del):
+                self.node_info.remove_child(name)
+
+        def nodes_with_paths(self, prefix=None, recursive=True, include_self=True, allow_duplicates=True):
             memo = set()
+            prefix = ComposedNode.get_list_path(prefix, check_types=False) or []
             if include_self:
-                memo.add(self)
+                memo.add(id(self))
                 yield prefix, self
 
             for name, child in self._children.items():
-                if child is None or (child in memo and not allow_duplicates):
+                if child is None or (id(child) in memo and not allow_duplicates):
                     continue
-                child_name = prefix + self._get_child_accessor(name, myname=prefix)
-                if not recurse:
-                    memo.add(child)
-                    yield child_name, child
+                child_path = prefix + [name]
+                if not recursive or not isinstance(child, ComposedNode):
+                    memo.add(id(child))
+                    yield child_path, child
                 else:
-                    for path, node in child.node_info.named_nodes(prefix=child_name, recurse=recurse, include_self=True):
-                        if node in memo and not allow_duplicates:
+                    for path, node in child.node_info.nodes_with_paths(prefix=child_path, recursive=recursive, include_self=True):
+                        if id(node) in memo and not allow_duplicates:
                             continue
-                        memo.add(node)
+                        memo.add(id(node))
                         yield path, node
 
-        def nodes(self, recurse=True, include_self=True, allow_duplicates=False):
-            for _, node in self.node_info.named_nodes(recurse=recurse, include_self=include_self, allow_duplicates=allow_duplicates):
+        def nodes(self, recursive=True, include_self=True, allow_duplicates=False):
+            for _, node in self.node_info.nodes_with_paths(recursive=recursive, include_self=include_self, allow_duplicates=allow_duplicates):
                 yield node
 
         def named_children(self, allow_duplicates=True):
             memo = set()
             for name, child in self._children.items():
                 if not allow_duplicates:
-                    if child in memo:
+                    if id(child) in memo:
                         continue
-                    memo.add(child)
+                    memo.add(id(child))
                 yield name, child
 
         def children(self, allow_duplicates=True):

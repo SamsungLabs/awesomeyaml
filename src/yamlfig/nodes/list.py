@@ -99,6 +99,9 @@ class ConfigList(ComposedNode, list):
         node = ComposedNode.__repr__(self)
         return node + ': ' + list_repr
 
+    def __str__(self):
+        return '[' + ', '.join(map(str, self)) + ']'
+
     def _get_value(self):
         return self
 

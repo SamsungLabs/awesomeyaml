@@ -2,9 +2,6 @@ import yaml
 import re
 import tokenize
 
-#from .nodes.basic_nodes import *
-#from .basic_nodes import _fstr_regex
-#from .nodes.dynamic_nodes import *
 from .config import Config
 from .nodes.node import ConfigNode
 
@@ -18,30 +15,6 @@ def _maybe_parse_scalar(loader, node, reparse=True):
         ret = yaml.safe_load(ret)
 
     return ret
-
-
-def _eval_contructor(loader, node):
-    return _make_obj(loader, node, Eval)
-
-def _fstr_constructor(loader, node):
-    return _make_obj(loader, node, FStr)
-
-def _bind_contructor(loader, node):
-    func = None
-    args = None
-    if isinstance(node, yaml.MappingNode):
-        value = loader.construct_mapping(node, deep=True)
-    else:
-        value = { 'func': Lazy('!name ' + loader.construct_scalar(node)) }
-
-    assert len(value) <= 2
-    assert 'func' in value
-    func = value['func']
-    if len(value) == 2:
-        assert 'args' in value
-        args = value['args']
-
-    return Bind(func, args)
 
 def _make_obj(loader, node, objtype, reparse_scalars=False):
     args = []
@@ -61,68 +34,8 @@ def _make_obj(loader, node, objtype, reparse_scalars=False):
 
     return objtype(*args, **kwargs)
 
-def _required_constructor(loader, node):
-    return _make_obj(loader, node, FailIfUnset)
-
-def _unused_constructor(loader, node):
-    return _make_obj(loader, node, FailIfUsed)
-
-def _xref_constructor(loader, node):
-    return _make_obj(loader, node, XRef)
-
-def _lazy_constructor(loader, node):
-    return _make_obj(loader, node, Lazy)
-
-def _lazy_name_constructor(loader, node):
-    name = loader.construct_scalar(node)
-    return Lazy('!!python/name:' + name.strip())
-
-def _lazy_module_constructor(loader, node):
-    name = loader.construct_scalar(node)
-    return Lazy('!!python/module:' + name.strip())
-
-def _config_constructor(loader, node):
-    if not isinstance(node, yaml.MappingNode):
-        scalar = loader.construct_scalar(node)
-        assert not scalar
-        return {}
-        
-    return loader.construct_mapping(node)
-
-def _implies_constructor(loader, node):
-    return _make_obj(loader, node, Implies)
-
-def _ops_constructor(loader, node):
-    return _make_obj(loader, node, Ops)
-
-def _del_constructor(loader, node):
-    return _make_obj(loader, node, Del)
-
-def _append_constructor(loader, node):
-    args = []
-    if isinstance(node, yaml.SequenceNode):
-        args = loader.construct_sequence(node, deep=True)
-    else:
-        args = [_maybe_parse_scalar(loader, node)]
-
-    return DynClass.Append(args)
-
-def _weak_constructor(loader, node):
-    if isinstance(node, yaml.SequenceNode):
-        value = loader.construct_sequence(node, deep=True)
-    elif isinstance(node, yaml.ScalarNode):
-        value = _maybe_parse_scalar(loader, node)
-    else:
-        raise ValueError('Unsupported PyYaml node type')
-
-    return Weak(value)
-
-def _include_constructor(loader, node):
-    from .config import Config
-    value = loader.construct_scalar(node)
-    return IncludeNode(value)
-
-def _metadata_constructor(loader, tag_sufix, node):
+def _make_node(loader, node, kwargs=None):
+    kwargs = kwargs or {}
     data = None
     if isinstance(node, yaml.MappingNode):
         data = loader.construct_mapping(node, deep=True)
@@ -131,55 +44,35 @@ def _metadata_constructor(loader, tag_sufix, node):
     elif isinstance(node, yaml.ScalarNode):
         data = _maybe_parse_scalar(loader, node, reparse=False)
 
+    return ConfigNode(data, idx=loader.context.get_current_stage_idx(), **kwargs)
+
+
+def _del_constructor(loader, node):
+    return _make_node(loader, node, kwargs={ 'delete': True })
+
+def _weak_constructor(loader, node):
+    return _make_node(loader, node, kwargs={ 'merge_mode': ConfigNode.WEAK })
+
+def _force_constructor(loader, node):
+    return _make_node(loader, node, kwargs={ 'merge_mode': ConfigNode.FORCE })
+
+def _metadata_constructor(loader, tag_suffix, node):
     import pickle
-    return ConfigNode(data, idx=loader.context.get_current_stage_idx(), metadata=pickle.loads(bytes.fromhex(tag_sufix)))
+    metadata = pickle.loads(bytes.fromhex(tag_suffix))
+    kwargs = {}
+    for special in ConfigNode.special_metadata_names:
+        if special in metadata:
+            kwargs[special] = metadata.pop(special)
 
-yaml.add_constructor('!eval', _eval_contructor)
-yaml.add_implicit_resolver('!fstr', _fstr_regex)
-yaml.add_constructor('!fstr', _fstr_constructor)
-yaml.add_constructor('!bind', _bind_contructor)
-yaml.add_constructor('!required', _required_constructor)
-yaml.add_constructor('!unused', _unused_constructor)
-yaml.add_constructor('!xref', _xref_constructor)
-yaml.add_constructor('!lazy', _lazy_constructor)
-yaml.add_constructor('!name', _lazy_name_constructor)
-yaml.add_constructor('!module', _lazy_module_constructor)
-yaml.add_constructor('!config', _config_constructor)
-yaml.add_constructor('!implies', _implies_constructor)
-yaml.add_constructor('!ops', _ops_constructor)
+    kwargs['metadata'] = metadata
+    return _make_node(loader, node, kwargs=kwargs)
+
+
 yaml.add_constructor('!del', _del_constructor)
-yaml.add_constructor('!append', _append_constructor)
 yaml.add_constructor('!weak', _weak_constructor)
-yaml.add_constructor('!include', _include_constructor)
-yaml.add_multi_constructor('!metadata', _metadata_constructor)
+yaml.add_constructor('!force', _force_constructor)
+yaml.add_multi_constructor('!metadata:', _metadata_constructor)
 
-
-def _dynamic_representer(dumper, data):
-    return data._represent(dumper)
-
-def _unused_representer(dumper, data):
-    return dumper.represent_scalar('!unused', '')
-
-def _config_representer(dumper, data):
-    return dumper.represent_mapping('!config' if not data._override_on_merge else '!del', data._fields)
-
-def _del_representer(dumper, data):
-    if not data._fields:
-        return dumper.represent_scalar('!del', '')
-    else:
-        return dumper.represent_mapping('!del', data._fields)
-
-def _weak_representer(dumper, data):
-    if isinstance(data, collections.Sequence):
-        return dumper.represent_sequence('!weak', data.value)
-    else:
-        return dumper.represent_scalar('!weak', data.value)
-
-#yaml.add_multi_representer(DynamicNode, _dynamic_representer)
-#yaml.add_representer(FailIfUsedNode, _unused_representer)
-#yaml.add_representer(_Config, _config_representer)
-#yaml.add_representer(DelNode, _del_representer)
-#yaml.add_representer(WeakNode, _weak_representer)
 
 def _get_metadata_end(data, beg):
     _beg = beg+2
@@ -193,7 +86,7 @@ def _get_metadata_end(data, beg):
 
         ret = data[_beg:end]
         _beg = end
-        return ret
+        return ret.encode('utf8')
          
     last_close = False
     end = None
@@ -209,7 +102,7 @@ def _get_metadata_end(data, beg):
 
     return end
 
-def _get_metadatas_content(data):
+def _get_metadata_content(data):
     _metadata_tag = '!metadata'
     curr_pos = data.find(_metadata_tag)
     while curr_pos != -1:
@@ -228,32 +121,31 @@ def _get_metadatas_content(data):
 def _encode_metadata(data):
     import pickle
 
-    ranges = list(_get_metadatas_content(data))
+    ranges = list(_get_metadata_content(data))
     offset = 0
     for beg, end in ranges:
         beg += offset
         end += offset
 
-        repl = ':' + pickle.dumps(eval(data[beg:end])).hex()
+        repl = ':' + pickle.dumps(eval(data[beg+1:end-1])).hex()
         orig_len = end-beg
         repl_len = len(repl)
-        data[beg:end] = repl
+        data = data[:beg] + repl + data[end:]
         offset += repl_len - orig_len
 
     return data
 
-class YamlfigLoader(yaml.Loader):
-    def construct_document(self, node):
-        return Config(super().construct_document(node))
 
 def parse(data, builder):
     if not isinstance(data, str):
         data = data.read()
     
+    #print(data)
     data = _encode_metadata(data)
     def get_loader(stream):
         loader = yaml.Loader(stream)
         loader.context = builder
         return loader
 
-    return yaml.load_all(data, Loader=get_loader)
+    for raw in yaml.load_all(data, Loader=get_loader):
+        yield Config(raw)

@@ -83,6 +83,9 @@ class ConfigScalar(ConfigNode, metaclass=ConfigScalarMeta):
         node = ConfigNode.__repr__(self)
         return node + ': ' + self._dyn_base.__repr__(self)
 
+    def __str__(self):
+        return self.__repr__(simple=True)
+
     def _get_value(self):
         if self._dyn_base in [configbool, ConfigNone]:
             return self._dyn_base.get(self)

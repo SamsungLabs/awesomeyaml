@@ -10,13 +10,13 @@ class ConfigDict(ComposedNode, dict):
 
     def _set(self, name, value):
         if name in dir(type(self)):
-            raise ValueError(f'Cannot add a child node with name {name!r} as it would shadow a class method/atribute: {getattr(type(self), name)}')
+            raise ValueError(f'Cannot add a child node with name {name!r} as it would shadow a class method/attribute: {getattr(type(self), name)}')
         value = ComposedNode.node_info.set_child(self, name, value)
         dict.__setitem__(self, name, value)
         return value
 
     def _del(self, name):
-        child = ComposedNode.node_info.remove_child(self, name)
+        ComposedNode.node_info.remove_child(self, name)
         dict.__delitem__(self, name)
 
     def __setattr__(self, name, value):
@@ -82,10 +82,6 @@ class ConfigDict(ComposedNode, dict):
             #val.set_parent(None, None)
         return val
 
-    def update(self, other):
-        for name, item in other.items():
-            self.node_info.set_child(name, item)
-
     def merge(self, other):
         ''' Merge `other` into `self`.
             Args:
@@ -96,11 +92,29 @@ class ConfigDict(ComposedNode, dict):
                 The operation is considered atomic, i.e. if at any point during
                 merging an unhandled exceptions is raised, `self` is unaffected.
         '''
-        for name, value in other.items():
-            if name in self and not self[name].is_leaf:
-                self[name].merge(value)
+        if other.node_info.delete:
+            def maybe_keep(node, path):
+                other_node = other.node_info.get_first_not_missing_node(path)
+                return node.node_info.has_priority_over(other_node)
+
+            self.node_info.filter_nodes(maybe_keep)
+
+        for key, value in other.items():
+            child = self.get(key, None)
+            if child is None:
+                self.node_info.set_child(key, value)
             else:
-                self.node_info.set_child(name, value)
+                if not child.node_info.is_leaf and type(child) == type(value):
+                    child.merge(value)
+                    if not child and not child.node_info.has_priority_over(value):
+                        self.node_info.remove_child(key)
+                else:
+                    if value.node_info.has_priority_over(child, if_equal=True):
+                        if not value and value.node_info.delete:
+                            self.node_info.remove_child(key)
+                        else:
+                            self.node_info.set_child(key, value)
+
 
     def __repr__(self, simple=False):
         dict_repr = '{' + ', '.join([f'{n!r}: {c.__repr__(simple=True)}' for n, c in self.node_info.named_children()]) + '}'
@@ -109,6 +123,13 @@ class ConfigDict(ComposedNode, dict):
 
         node = ComposedNode.__repr__(self)
         return node + ': ' + dict_repr
+
+    def __str__(self):
+        def strify(kv):
+            k, v = kv
+            return str(k) + ': ' + str(v)
+
+        return '{' + ', '.join(map(strify, self.items())) + '}'
 
     def _get_value(self):
         return self

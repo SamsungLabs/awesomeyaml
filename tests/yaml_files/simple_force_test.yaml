@@ -1,0 +1,10 @@
+---
+a: !force
+    b: 1
+---
+a:
+    b: 2
+
+###EXPECTED
+a:
+    b: 1

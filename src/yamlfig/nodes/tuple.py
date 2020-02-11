@@ -61,6 +61,9 @@ class ConfigTuple(ComposedNode, tuple):
         node = ComposedNode.__repr__(self)
         return node + ': ' + tuple_repr
 
+    def __str__(self):
+        return '(' ', '.join(map(str, self)) + ')'
+
     def _get_value(self):
         return self
 

@@ -1,0 +1,10 @@
+---
+a: !force
+    b: 1
+---
+a: !metadata{{ 'delete': True, 'merge_mode': 1 }}
+    c: 2
+
+###EXPECTED
+a:
+    c: 2
