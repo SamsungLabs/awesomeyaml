@@ -2,14 +2,12 @@ from .node import ConfigNode
 
 
 class DynamicNode(ConfigNode):
-    def __init__(self, priority=0, dependencies=None, users=None, **kwargs):
+    def __init__(self, dependencies=None, users=None, **kwargs):
         super().__init__(**kwargs)
 
-        self._priority = priority
         self._dependencies = dependencies or []
         self._users = users or []
 
-        assert isinstance(self._priority, int)
         assert isinstance(self._dependencies, list)
         assert isinstance(self._users, list)
         for d in self._dependencies:

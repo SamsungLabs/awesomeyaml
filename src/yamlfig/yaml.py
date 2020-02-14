@@ -2,7 +2,6 @@ import yaml
 import re
 import tokenize
 
-from .config import Config
 from .nodes.node import ConfigNode
 
 
@@ -34,7 +33,7 @@ def _make_obj(loader, node, objtype, reparse_scalars=False):
 
     return objtype(*args, **kwargs)
 
-def _make_node(loader, node, kwargs=None):
+def _make_node(loader, node, node_type=ConfigNode, kwargs=None):
     kwargs = kwargs or {}
     data = None
     if isinstance(node, yaml.MappingNode):
@@ -44,7 +43,7 @@ def _make_node(loader, node, kwargs=None):
     elif isinstance(node, yaml.ScalarNode):
         data = _maybe_parse_scalar(loader, node, reparse=False)
 
-    return ConfigNode(data, idx=loader.context.get_current_stage_idx(), **kwargs)
+    return node_type(data, idx=loader.context.get_next_stage_idx(), **kwargs)
 
 
 def _del_constructor(loader, node):
@@ -67,11 +66,22 @@ def _metadata_constructor(loader, tag_suffix, node):
     kwargs['metadata'] = metadata
     return _make_node(loader, node, kwargs=kwargs)
 
+def _include_constructor(loader, node):
+    from .nodes.include import IncludeNode
+    return _make_node(loader, node, node_type=IncludeNode, kwargs={ 'ref_file': loader.context.get_current_file() })
+
+
+def _prev_node_constructor(loader, node):
+    from .nodes.prev import PrevNode
+    return _make_node(loader, node, node_type=PrevNode)
+
 
 yaml.add_constructor('!del', _del_constructor)
 yaml.add_constructor('!weak', _weak_constructor)
 yaml.add_constructor('!force', _force_constructor)
 yaml.add_multi_constructor('!metadata:', _metadata_constructor)
+yaml.add_constructor('!include', _include_constructor)
+yaml.add_constructor('!prev', _prev_node_constructor)
 
 
 def _get_metadata_end(data, beg):
@@ -148,4 +158,4 @@ def parse(data, builder):
         return loader
 
     for raw in yaml.load_all(data, Loader=get_loader):
-        yield Config(raw)
+        yield ConfigNode(raw)

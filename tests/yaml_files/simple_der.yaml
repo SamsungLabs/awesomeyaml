@@ -1,7 +1,0 @@
-!include ./base.yaml
----
-foo:
-    bar2: 3
-    bar3: 4
-
-der: True

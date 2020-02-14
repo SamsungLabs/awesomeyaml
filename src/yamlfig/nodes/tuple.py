@@ -3,11 +3,14 @@ from ..namespace import namespace
 
 
 class ConfigTuple(ComposedNode, tuple):
-    def __new__(cls, value):
+    def __new__(cls, value, **kwargs):
         from .node import ConfigNode
+        value = value if value is not None else tuple()
         return tuple.__new__(cls, tuple(ConfigNode(child) for child in value))
 
-    def __init__(self, value, **kwargs):
+    def __init__(self, value=None, **kwargs):
+        value = value if value is not None else tuple()
+        ComposedNode.maybe_inherit_flags(value, kwargs)
         ComposedNode.__init__(self, children={ i: v for i, v in enumerate(value) }, **kwargs)
 
     def _validate_index(self, index):
@@ -33,36 +36,36 @@ class ConfigTuple(ComposedNode, tuple):
     def __getitem__(self, index):
         return self._get(index, raise_ex=True)
 
-    @namespace('node_info')
+    @namespace('yamlfigns')
     def set_child(self, index, value):
         raise TypeError('tuple does not support item assignment')
 
-    @namespace('node_info')
+    @namespace('yamlfigns')
     def remove_child(self, index):
         raise TypeError('tuple does not support item deletion')
 
-    @namespace('node_info')
+    @namespace('yamlfigns')
     def get_child(self, index, default=None):
         return self._get(index, default=default, raise_ex=False)
+
+    @namespace('yamlfigns')
+    def map_nodes(self, map_fn):
+        raw = tuple(map(map_fn, self))
+        return ConfigTuple(raw)
 
     def __contains__(self, value):
         return tuple.__contains__(self, value)
 
-    def _get_child_accessor(self, childname, myname=''):
-        if not myname:
-            return childname
-        return f'[{childname}]'
-
     def __repr__(self, simple=False):
-        tuple_repr = '(' + ', '.join([c.__repr__(simple=True) for c in self.children()]) + ')'
+        tuple_repr = '(' + ', '.join([c.__repr__(simple=True) for c in self.yamlfigns.children()]) + ')'
         if simple:
-            return tuple_repr
+            return type(self).__name__ + tuple_repr
 
         node = ComposedNode.__repr__(self)
-        return node + ': ' + tuple_repr
+        return node + tuple_repr
 
     def __str__(self):
-        return '(' ', '.join(map(str, self)) + ')'
+        return type(self).__name__ + '(' ', '.join(map(str, self)) + ')'
 
     def _get_value(self):
         return self

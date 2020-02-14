@@ -1,0 +1,13 @@
+base: !include ./base.yaml
+der:
+    test: crossaint
+
+###EXPECTED
+base:
+    foo:
+        bar1: 0
+        bar2: 1
+    unique: placki
+    der: False
+der:
+    test: crossaint

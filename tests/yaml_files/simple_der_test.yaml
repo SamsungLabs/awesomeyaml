@@ -1,0 +1,16 @@
+!include ./base.yaml
+---
+foo:
+    bar2: 3
+    bar3: 4
+
+der: True
+
+
+###EXPECTED
+foo:
+    bar1: 0
+    bar2: 3
+    bar3: 4
+unique: placki
+der: True

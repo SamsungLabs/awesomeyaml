@@ -1,0 +1,14 @@
+---
+root:
+    a: [1, 2, 3]
+---
+root:
+    prev: !prev root
+    a: False
+
+
+###EXPECTED
+root:
+    prev:
+        a: [1, 2, 3]
+    a: False

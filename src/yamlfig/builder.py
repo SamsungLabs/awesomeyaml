@@ -1,13 +1,43 @@
+import os
+import contextlib
+import collections
 
 
 class Builder():
     def __init__(self):
         self.stages = []
+        self._current_file = None
+        self._current_stage = None
 
-    def get_current_stage_idx(self):
+    @contextlib.contextmanager
+    def current_stage(self, i):
+        old = self._current_stage
+        self._current_stage = i
+        yield
+        self._current_stage = old
+
+    def get_next_stage_idx(self):
         return len(self.stages)
 
-    def add_stages(self, source, raw_yaml=None):
+    def get_current_stage_idx(self):
+        return self._current_stage
+
+    def get_current_file(self):
+        return self._current_file
+
+    def add_multiple_sources(self, *sources, raw_yaml=None):
+        if not isinstance(raw_yaml, collections.Sequence):
+            raw_yaml = [raw_yaml] * len(sources)
+        else:
+            if isinstance(raw_yaml, str) or isinstance(raw_yaml, bytes):
+                raise ValueError('Expected sequence but not str or bytes')
+            if len(raw_yaml) != len(sources):
+                raise ValueError('Length of "sources" and "raw_yaml" must match')
+
+        for source, raw in zip(sources, raw_yaml):
+            self.add_source(source, raw_yaml=raw)
+
+    def add_source(self, source, raw_yaml=None, filename=None):
         ''' Parse a stream of yaml documents specified by `source` and add them to the list of stages.
             The documents stream can be provided either directly or read from a file - the behaviour is determined
             by `source` and `raw_yaml` arguments.
@@ -30,6 +60,7 @@ class Builder():
         if isinstance(source, str) and not raw_yaml:
             try:
                 with open(source, 'r') as f:
+                    self._current_file = source
                     source = f.read()
             except (FileNotFoundError, OSError) as e:
                 #OSError(22) is "Invalid argument"
@@ -38,32 +69,88 @@ class Builder():
                 if raw_yaml is not None:
                     raise
 
-        from . import yaml
-        for node in yaml.parse(source, self):
-            if node is not None:
-                self.stages.append(node)
+        try:
+            if filename is not None:
+                self._current_file = filename
+
+            from . import yaml
+            for node in yaml.parse(source, self):
+                if node is not None:
+                    self.stages.append(node)
+        finally:
+            self._current_file = None
 
     def build(self):
-        from .config import Config
         if not self.stages:
-            return Config()
+            return None
 
-        self.process_includes()
+        self.preprocess()
         self.flatten()
-        self.evaluate()
-        return Config(self.stages[0])
+        return self.stages[0]
 
-    def process_includes(self):
-        pass
+    def preprocess(self):
+        i = 0
+        while i < len(self.stages):
+            _i = i
+            with self.current_stage(i):
+                stage = self.stages[i]
+                new_stage = stage.yamlfigns.preprocess(self)
+
+                if new_stage is not stage:
+                    try:
+                        self.stages[i:i+1] = new_stage.stages
+                        i += len(new_stage.stages)
+                    except AttributeError:
+                        self.stages[i] = new_stage
+                        i += 1
+                else:
+                    i += 1
+
+            assert _i != i, 'infinite loop?'
 
     def flatten(self):
+        for stage in self.stages:
+            if not isinstance(stage, dict):
+                raise ValueError('Not all stages are dictionaries')
+
+        new_stage = self.stages[0].yamlfigns.premerge(None)
+        if new_stage is not self.stages[0]:
+            try:
+                self.stages[0:1] = new_stage.stages
+            except AttributeError:
+                self.stages[0] = new_stage
+
         if len(self.stages) < 2:
             return
 
         for i in range(1, len(self.stages)):
-            self.stages[0].merge(self.stages[i])
+            self.stages[0].yamlfigns.merge(self.stages[i])
 
         self.stages = [self.stages[0]]
 
-    def evaluate(self):
-        pass
+    def get_lookup_dirs(self, ref_point):
+        if ref_point is not None:
+            yield os.path.dirname(ref_point)
+        yield os.getcwd()
+
+    def get_subbuilder(self, requestor):
+        if self._current_stage is None:
+            raise RuntimeError('SubBuilder requested when not processing any stage!')
+
+        return SubBuilder(requestor, self)
+
+
+class SubBuilder(Builder):
+    def __init__(self, srcnode, parent):
+        super().__init__()
+        self.requestor = srcnode
+        self.parent = parent
+        self.stage = parent.get_current_stage_idx()
+
+    def build(self):
+        from .nodes.stream import StreamNode
+        self.preprocess()
+        return StreamNode(self)
+
+    def get_lookup_dirs(self, ref_point):
+        return self.parent.get_lookup_dirs(ref_point)

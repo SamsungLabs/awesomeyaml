@@ -29,11 +29,11 @@ class EvalContext():
         start = index - 1
 
         # Check for 'weak' and 'force'
-        while not candidate[-1][1].node_info.force:
+        while not candidate[-1][1].yamlfigns.force:
             try:
                 override, index2 = self.rfind(name, start=start, return_intermediate=True, include_names=True)
                 start = index2 - 1
-                if (candidate[-1][1].node_info.weak and not override[-1][1].node_info.weak) or (not candidate[-1][1].node_info.force and override[-1][1].node_info.force):
+                if (candidate[-1][1].yamlfigns.weak and not override[-1][1].yamlfigns.weak) or (not candidate[-1][1].yamlfigns.force and override[-1][1].yamlfigns.force):
                     candidate = override
                     index = index2
             except KeyError:
@@ -45,7 +45,7 @@ class EvalContext():
         for i, source in enumerate(self.sources):
             nodes = EvalContext._find_in_node(source, path, return_intermediate=True, include_names=False, allow_incomplete=True)
             for node in nodes:
-                if node.node_info.delete:
+                if node.yamlfigns.delete:
                     ret.append(i)
                     break
 

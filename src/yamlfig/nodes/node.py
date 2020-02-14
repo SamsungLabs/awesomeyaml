@@ -4,17 +4,20 @@ from ..namespace import NamespaceableMeta, Namespace, staticproperty
 
 
 class ConfigNodeMeta(NamespaceableMeta):
-    def __call__(cls, value=None, _force_type=False, _force_new=False, _nodes_cache=None, **kwargs):
-        _nodes_cache = _nodes_cache or {}
+    def __call__(cls, value=None, _force_type=False, _nodes_cache=None, _cache_nodes=True, _force_new=False, _deep_new=False, _copy_guard=False, **kwargs):
+        if _cache_nodes and _nodes_cache is not None and id(value) in _nodes_cache:
+            return _nodes_cache[id(value)]
+        
         t = cls
-        if isinstance(value, ConfigNode):
+        if isinstance(value, ConfigNode) and not _copy_guard:
             if not _force_new:
                 return value
             t = type(value)
-            value = value.node_info.value
-        elif not _force_new and id(value) in _nodes_cache:
-            return _nodes_cache[id(value)]
-        elif cls is ConfigNode and not _force_type:
+            value = value.yamlfigns.value
+            return t(value=value, _force_type=True, _nodes_cache=_nodes_cache, _cache_nodes=True, _force_new=_deep_new, _deep_new=_deep_new, _copy_guard=True, **kwargs)
+
+        if cls is ConfigNode and not _force_type:
+            # deduce type and call it recursively (this time enforcing it)
             from .dict import ConfigDict
             from .list import ConfigList
             from .tuple import ConfigTuple
@@ -28,16 +31,26 @@ class ConfigNodeMeta(NamespaceableMeta):
             elif isinstance(value, collections.MutableMapping):
                 t = ConfigDict
             else:
-                return ConfigScalar(value, **kwargs)
+                t = ConfigScalar
 
-        obj = t.__new__(t, value)
-        if obj is not None:
-            if t is ConfigNode:
-                obj.__init__(**kwargs)
-            else:
-                obj.__init__(value, **kwargs)
+            return t(value=value, _force_type=True, _nodes_cache=_nodes_cache, _cache_nodes=True, _force_new=_force_new, _deep_new=_deep_new, **kwargs)
+        
+        from .composed import ComposedNode
+        if issubclass(cls, ComposedNode):
+            kwargs['_nodes_cache'] = _nodes_cache
+            kwargs['_cache_nodes'] = _cache_nodes
+            kwargs['_force_new'] = _force_new
+            kwargs['_deep_new'] = _deep_new
 
-        return obj
+        if cls is ConfigNode:
+            ret = super().__call__(**kwargs)
+        else:
+            ret = super().__call__(value, **kwargs)
+
+        if _cache_nodes and _nodes_cache is not None:
+            _nodes_cache[id(value)] = ret
+ 
+        return ret
 
 
 class ConfigNode(metaclass=ConfigNodeMeta):
@@ -47,7 +60,9 @@ class ConfigNode(metaclass=ConfigNodeMeta):
     special_metadata_names = [
         'idx',
         'merge_mode',
-        'delete'
+        'delete',
+        'dependencies',
+        'users'
     ]
 
     def __init__(self, idx=None, merge_mode=0, delete=False, metadata=None):
@@ -58,10 +73,10 @@ class ConfigNode(metaclass=ConfigNodeMeta):
         self._delete = delete
         self._metadata = metadata or {}
 
-    def __repr__(self):
+    def __repr__(self, simple=False):
         return f'<Object {type(self).__name__!r} at 0x{id(self):02x}>'
 
-    class node_info(Namespace):
+    class yamlfigns(Namespace):
         @property
         def idx(self):
             return self._idx
@@ -104,3 +119,21 @@ class ConfigNode(metaclass=ConfigNodeMeta):
             if self._merge_mode == other._merge_mode:
                 return if_equal
             return self._merge_mode > other._merge_mode
+
+        def preprocess(self, builder):
+            return self.yamlfigns.on_preprocess([], builder)
+
+        def on_preprocess(self, path, builder):
+            return self
+
+        def premerge(self, into=None):
+            return self.yamlfigns.on_premerge([], into)
+
+        def on_premerge(self, path, into):
+            return self
+
+        def copy(self):
+            return ConfigNode(self, _force_new=True, _deep_new=False)
+
+        def deepcopy(self):
+            return ConfigNode(self, _force_new=True, _deep_new=True)
