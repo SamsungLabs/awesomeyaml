@@ -6,24 +6,28 @@ class ConfigList(ComposedNode, list):
     def __init__(self, value=None, **kwargs):
         value = value if value is not None else []
         ComposedNode.maybe_inherit_flags(value, kwargs)
+        kwargs.setdefault('delete', True)
         ComposedNode.__init__(self, children={ i: v for i, v in enumerate(value) }, **kwargs)
         list.__init__(self, self._children.values())
 
-    def _validate_index(self, index):
+    def _validate_index(self, index, allow_append=False):
         if not isinstance(index, int):
             raise TypeError(f'Index should be integer, got: {type(index)}')
-        if abs(index) >= len(self):
+        if abs(index) >= len(self) and (not allow_append or index != len(self)):
             raise IndexError('List index out of range')
         if index < 0:
             index = len(self) + index
 
         return index
 
-    def _set(self, index, value):
-        index = self._validate_index(index)
+    def _set(self, index, value, allow_append=False):
+        index = self._validate_index(index, allow_append=allow_append)
         try:
             value = ComposedNode.yamlfigns.set_child(self, index, value)
-            list.__setitem__(self, index, value)
+            if allow_append and index == len(self):
+                list.append(self, value)
+            else:
+                list.__setitem__(self, index, value)
         except:
             ComposedNode.yamlfigns.remove_child(self, index)
             raise
@@ -58,7 +62,7 @@ class ConfigList(ComposedNode, list):
 
     @namespace('yamlfigns')
     def set_child(self, index, value):
-        return self._set(index, value)
+        return self._set(index, value, allow_append=True)
 
     @namespace('yamlfigns')
     def remove_child(self, index):
@@ -81,6 +85,30 @@ class ConfigList(ComposedNode, list):
     def clear(self):
         ComposedNode.yamlfigns.clear(self)
         list.clear(self)
+
+    def extend(self, other):
+        for val in other:
+            self.append(val)
+
+    @namespace('yamlfigns')
+    def merge(self, other):
+        if not isinstance(other, ComposedNode):
+            raise TypeError('ComposedNode expected')
+
+        if isinstance(other, dict):
+            for key in other.yamlfigns.children_names():
+                self._validate_index(key)
+
+        def keep_if_exists(path, node):
+            if not node.yamlfigns.delete:
+                return True
+            current = self.yamlfigns.get_first_not_missing_node(path)
+            return node.yamlfigns.has_priority_over(current, if_equal=True)
+
+        other.yamlfigns.filter_nodes(keep_if_exists)
+
+        return super().yamlfigns.merge(other)
+
 
     @namespace('yamlfigns')
     @staticproperty

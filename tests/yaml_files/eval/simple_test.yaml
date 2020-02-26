@@ -1,0 +1,7 @@
+---
+code: !eval |
+    import math
+    math.log2(2**10)
+
+###EXPECTED
+code: 10

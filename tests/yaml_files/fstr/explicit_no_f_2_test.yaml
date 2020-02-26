@@ -1,0 +1,5 @@
+---
+str: !fstr 'Is {2**2} equal to {2+2}?'
+
+###EXPECTED
+str: Is 4 equal to 4?

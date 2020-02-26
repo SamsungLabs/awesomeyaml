@@ -106,6 +106,15 @@ class ListNodeTest(unittest.TestCase):
         self.assertIs(test.yamlfigns.get_child(0, None), None)
         self.assertEqual(test.yamlfigns.children_count(), 0)
 
+    def test_extend(self):
+        from yamlfig.nodes.list import ConfigList
+        l1 = ConfigList([1, 2])
+        l2 = ConfigList([3, 4])
+        l1.extend(l2)
+        self.assertEqual(l1, [1, 2, 3, 4])
+        self.assertEqual(l1[-1], 4)
+        self.assertEqual(l1.yamlfigns.children_count(), 4)
+
 
 if __name__ == '__main__':
     unittest.main()

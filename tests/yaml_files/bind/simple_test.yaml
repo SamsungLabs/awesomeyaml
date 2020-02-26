@@ -1,0 +1,12 @@
+---
+f: !bind:tests.utils.linear_f
+    a: 2
+    b: 1
+
+###EXPECTED
+skip
+
+###VALIDATE:
+from tests.utils import linear_f
+self.assertEqual(result.f.yamlfigns.func, linear_f)
+self.assertEqual(result.f(2), 5)

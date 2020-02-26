@@ -7,3 +7,11 @@ def setUpModule():
         import yamlfig
     finally:
         sys.path = sys.path[1:]
+
+
+def linear_f(x, *, a=1, b=0):
+    return a*x + b
+
+
+def cubic_f(x, *, a=1, b=0):
+    return a*(x**3) + b

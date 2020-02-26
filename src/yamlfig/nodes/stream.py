@@ -1,5 +1,4 @@
 from .list import ConfigList
-
 from ..namespace import namespace, staticproperty
 
 

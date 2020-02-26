@@ -120,3 +120,32 @@ class persistent_id(int):
             object will use the same id as long as the `persistent_id` object exists.
         '''
         self._ref = obj
+
+
+def pad_with_none(*args, minlen=None):
+    if minlen is None or len(args) >= minlen:
+        return args
+    return (*args, *([None] * (minlen - len(args))))
+
+
+def import_name(symbol_name):
+    module_name, entity_name = pad_with_none(*symbol_name.rsplit('.', maxsplit=1), minlen=2)
+    if not entity_name:
+        if symbol_name.endswith('.'):
+            raise ValueError(f'Invalid target name: {symbol_name}')
+        entity_name = module_name
+        module_name = None
+
+    entity = None
+    if module_name is None:
+        if entity_name not in globals():
+            raise KeyError(f'Cannot find an entity named: {entity_name!r} in global variables')
+        entity = globals()[entity_name]
+    else:
+        import importlib
+        module = importlib.import_module(module_name)
+        if entity_name not in dir(module):
+            raise KeyError(f'Cannot find an entity named: {entity_name!r} in module: {module}')
+        entity = getattr(module, entity_name)
+
+    return entity

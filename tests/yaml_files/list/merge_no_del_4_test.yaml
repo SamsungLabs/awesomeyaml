@@ -1,0 +1,7 @@
+---
+a: !force [1]
+---
+a: !merge [3, 4]
+
+###EXPECTED
+a: [1, 4]

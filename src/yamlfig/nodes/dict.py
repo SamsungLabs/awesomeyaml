@@ -86,30 +86,10 @@ class ConfigDict(ComposedNode, dict):
 
     @namespace('yamlfigns')
     def merge(self, other):
-        other.yamlfigns.premerge(self)
-        if other.yamlfigns.delete:
-            def maybe_keep(path, node):
-                other_node = other.yamlfigns.get_first_not_missing_node(path)
-                return node.yamlfigns.has_priority_over(other_node)
+        if not isinstance(other, dict):
+            raise TypeError('Dict expected')
 
-            self.yamlfigns.filter_nodes(maybe_keep)
-
-        for key, value in other.items():
-            child = self.get(key, None)
-            if child is None:
-                self.yamlfigns.set_child(key, value)
-            else:
-                if not child.yamlfigns.is_leaf and type(child) == type(value):
-                    child.yamlfigns.merge(value)
-                    if not child and not child.yamlfigns.has_priority_over(value):
-                        self.yamlfigns.remove_child(key)
-                else:
-                    if value.yamlfigns.has_priority_over(child, if_equal=True):
-                        if not value and value.yamlfigns.delete:
-                            self.yamlfigns.remove_child(key)
-                        else:
-                            self.yamlfigns.set_child(key, value)
-
+        return super().yamlfigns.merge(other)
 
     def __repr__(self, simple=False):
         dict_repr = '{' + ', '.join([f'{n!r}: {c.__repr__(simple=True)}' for n, c in self.yamlfigns.named_children()]) + '}'

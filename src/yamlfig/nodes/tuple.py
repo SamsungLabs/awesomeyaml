@@ -1,6 +1,8 @@
 from .composed import ComposedNode
 from ..namespace import namespace
 
+# TODO: finish implementation to make it conformant with other ComposedNode subtypes (i.e. add merge etc.)
+
 
 class ConfigTuple(ComposedNode, tuple):
     def __new__(cls, value, **kwargs):
@@ -11,6 +13,7 @@ class ConfigTuple(ComposedNode, tuple):
     def __init__(self, value=None, **kwargs):
         value = value if value is not None else tuple()
         ComposedNode.maybe_inherit_flags(value, kwargs)
+        kwargs.setdefault('delete', True)
         ComposedNode.__init__(self, children={ i: v for i, v in enumerate(value) }, **kwargs)
 
     def _validate_index(self, index):

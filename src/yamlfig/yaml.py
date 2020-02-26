@@ -3,6 +3,7 @@ import re
 import tokenize
 
 from .nodes.node import ConfigNode
+from .utils import pad_with_none
 
 
 _fstr_regex = re.compile(r"^\s*f(['\"]).*\1\s*$")
@@ -33,7 +34,7 @@ def _make_obj(loader, node, objtype, reparse_scalars=False):
 
     return objtype(*args, **kwargs)
 
-def _make_node(loader, node, node_type=ConfigNode, kwargs=None):
+def _make_node(loader, node, node_type=ConfigNode, kwargs=None, data_arg_name=None):
     kwargs = kwargs or {}
     data = None
     if isinstance(node, yaml.MappingNode):
@@ -43,7 +44,12 @@ def _make_node(loader, node, node_type=ConfigNode, kwargs=None):
     elif isinstance(node, yaml.ScalarNode):
         data = _maybe_parse_scalar(loader, node, reparse=False)
 
-    return node_type(data, idx=loader.context.get_next_stage_idx(), **kwargs)
+    if data_arg_name is None:
+        return node_type(data, idx=loader.context.get_next_stage_idx(), **kwargs)
+    else:
+        assert data_arg_name not in kwargs
+        kwargs[data_arg_name] = data
+        return node_type(idx=loader.context.get_next_stage_idx(), **kwargs)
 
 
 def _del_constructor(loader, node):
@@ -54,6 +60,13 @@ def _weak_constructor(loader, node):
 
 def _force_constructor(loader, node):
     return _make_node(loader, node, kwargs={ 'merge_mode': ConfigNode.FORCE })
+
+def _merge_constructor(loader, node):
+    return _make_node(loader, node, kwargs={ 'delete': False })
+
+def _append_constructor(loader, node):
+    from .nodes.append import AppendNode
+    return _make_node(loader, node, node_type=AppendNode)
 
 def _metadata_constructor(loader, tag_suffix, node):
     import pickle
@@ -76,13 +89,49 @@ def _prev_node_constructor(loader, node):
     return _make_node(loader, node, node_type=PrevNode)
 
 
+def _xref_node_constructor(loader, node):
+    from .nodes.xref import XRefNode
+    return _make_node(loader, node, node_type=XRefNode)
+
+
+def _bind_node_constructor(loader, tag_suffix, node):
+    from .nodes.bind import BindNode
+    if tag_suffix.count(':') > 1:
+        raise ValueError(f'Invalid bind tag: !bind:{tag_suffix}')
+
+    target_f_name, metadata = pad_with_none(*tag_suffix.split(':', maxsplit=1), minlen=2)
+    return _make_node(loader, node, node_type=BindNode, kwargs={ 'func': target_f_name, 'metadata': metadata }, data_arg_name='args')
+
+
+def _eval_node_constructor(loader, node):
+    from .nodes.eval import EvalNode
+    return _make_node(loader, node, node_type=EvalNode)
+
+
+def _fstr_node_constructor(loader, node):
+    from .nodes.fstr import FStrNode
+
+    def _maybe_fix_fstr(value, *args, **kwargs):
+        try:
+            return FStrNode(value, *args, **kwargs)
+        except ValueError:
+            return FStrNode("f'" + value + "'", *args, **kwargs)
+
+    return _make_node(loader, node, node_type=_maybe_fix_fstr)
+
 yaml.add_constructor('!del', _del_constructor)
 yaml.add_constructor('!weak', _weak_constructor)
 yaml.add_constructor('!force', _force_constructor)
+yaml.add_constructor('!merge', _merge_constructor)
+yaml.add_constructor('!append', _append_constructor)
 yaml.add_multi_constructor('!metadata:', _metadata_constructor)
 yaml.add_constructor('!include', _include_constructor)
 yaml.add_constructor('!prev', _prev_node_constructor)
-
+yaml.add_constructor('!xref', _xref_node_constructor)
+yaml.add_multi_constructor('!bind:', _bind_node_constructor)
+yaml.add_constructor('!eval', _eval_node_constructor)
+yaml.add_constructor('!fstr', _fstr_node_constructor)
+yaml.add_implicit_resolver('!fstr', _fstr_regex)
 
 def _get_metadata_end(data, beg):
     _beg = beg+2

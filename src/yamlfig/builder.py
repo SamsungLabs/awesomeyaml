@@ -86,6 +86,7 @@ class Builder():
 
         self.preprocess()
         self.flatten()
+        self.evaluate()
         return self.stages[0]
 
     def preprocess(self):
@@ -127,6 +128,14 @@ class Builder():
             self.stages[0].yamlfigns.merge(self.stages[i])
 
         self.stages = [self.stages[0]]
+
+    def evaluate(self):
+        if not self.stages:
+            return
+        if len(self.stages) != 1:
+            raise ValueError('Expected flat config')
+
+        self.stages[0] = self.stages[0].yamlfigns.evaluate()
 
     def get_lookup_dirs(self, ref_point):
         if ref_point is not None:

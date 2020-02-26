@@ -98,7 +98,7 @@ class ComposedNode(ConfigNode):
         if isinstance(path, int):
             return ComposedNode._get_child_accessor(path)
         if isinstance(path, collections.Sequence) and not isinstance(path, str):
-            return ComposedNode.split_path(path)
+            return ComposedNode.join_path(path)
 
         if check_types and not isinstance(path, str):
             raise ValueError(f'Unexpected type: {type(path)}, expected int, sequence or str')
@@ -282,7 +282,7 @@ class ComposedNode(ConfigNode):
 
             ret = self
             if not leafs_only:
-                ret = map_fn([], self)
+                ret = map_fn(prefix, self)
 
             return ret
 
@@ -311,6 +311,11 @@ class ComposedNode(ConfigNode):
             for _, node in self.yamlfigns.nodes_with_paths(recursive=recursive, include_self=include_self, allow_duplicates=allow_duplicates):
                 yield node
 
+        def nodes_paths(self, prefix=None, recursive=True, include_self=False):
+            for path, _ in self.yamlfigns.nodes_with_paths(recursive=recursive, include_self=include_self, allow_duplicates=allow_duplicates):
+                yield path
+
+
         def named_children(self, allow_duplicates=True):
             memo = set()
             for name, child in self._children.items():
@@ -323,6 +328,10 @@ class ComposedNode(ConfigNode):
         def children(self, allow_duplicates=True):
             for _, child in self.yamlfigns.named_children(allow_duplicates=allow_duplicates):
                 yield child
+
+        def children_names(self):
+            for key in self._children.keys():
+                yield key
 
         def children_count(self, allow_duplicates=True):
             if allow_duplicates:
@@ -340,6 +349,47 @@ class ComposedNode(ConfigNode):
 
         def preprocess(self, builder):
             return self.yamlfigns.map_nodes(lambda path, node: node.yamlfigns.on_preprocess(path, builder), cache_results=True, leafs_only=False)
+
+        def evaluate(self):
+            return self.yamlfigns.map_nodes(lambda path, node: node.yamlfigns.on_evaluate(path, self), cache_results=True, leafs_only=False)
+
+        def merge(self, other):
+            other.yamlfigns.premerge(self)
+            if other.yamlfigns.delete:
+                def maybe_keep(path, node):
+                    if other.yamlfigns.get_node(path):
+                        return True
+                    other_node = other.yamlfigns.get_first_not_missing_node(path)
+                    return node.yamlfigns.has_priority_over(other_node)
+
+                self.yamlfigns.filter_nodes(maybe_keep)
+
+            for key, value in other._children.items():
+                child = self.yamlfigns.get_child(key, None)
+                if child is None:
+                    self.yamlfigns.set_child(key, value)
+                else:
+                    merge = False
+                    if not child.yamlfigns.is_leaf: #and type(child) == type(value):
+                        try:
+                            possibly_new_child = child.yamlfigns.merge(value)
+                            merge = True
+                        except (TypeError, AttributeError):
+                            pass
+
+                    if merge:
+                        if not possibly_new_child and not possibly_new_child.yamlfigns.has_priority_over(value):
+                            self.yamlfigns.remove_child(key)
+                        elif possibly_new_child is not child:
+                            self.yamlfigns.set_child(key, possibly_new_child)
+                    else:
+                        if value.yamlfigns.has_priority_over(child, if_equal=True):
+                            if not value and value.yamlfigns.delete:
+                                self.yamlfigns.remove_child(key)
+                            else:
+                                self.yamlfigns.set_child(key, value)
+
+            return self
 
         @staticproperty
         @staticmethod

@@ -4,20 +4,30 @@ from ..namespace import NamespaceableMeta, Namespace, staticproperty
 
 
 class ConfigNodeMeta(NamespaceableMeta):
-    def __call__(cls, value=None, _force_type=False, _nodes_cache=None, _cache_nodes=True, _force_new=False, _deep_new=False, _copy_guard=False, **kwargs):
-        if _cache_nodes and _nodes_cache is not None and id(value) in _nodes_cache:
+    def __call__(cls, *args,_force_type=False, _nodes_cache=None, _cache_nodes=True, _force_new=False, _deep_new=False, _copy_guard=False, **kwargs):
+        value = None
+        has_value = False
+        if args:
+            value = args[0]
+            args = args[1:]
+            has_value = True
+
+        if has_value and _cache_nodes and _nodes_cache is not None and id(value) in _nodes_cache:
             return _nodes_cache[id(value)]
         
         t = cls
         if isinstance(value, ConfigNode) and not _copy_guard:
+            assert has_value
             if not _force_new:
                 return value
             t = type(value)
             value = value.yamlfigns.value
-            return t(value=value, _force_type=True, _nodes_cache=_nodes_cache, _cache_nodes=True, _force_new=_deep_new, _deep_new=_deep_new, _copy_guard=True, **kwargs)
+            return t(value, *args, _force_type=True, _nodes_cache=_nodes_cache, _cache_nodes=True, _force_new=_deep_new, _deep_new=_deep_new, _copy_guard=True, **kwargs)
 
         if cls is ConfigNode and not _force_type:
             # deduce type and call it recursively (this time enforcing it)
+            if not has_value:
+                raise ValueError('Cannot deduce target type without a positional argument - deduction is always done w.r.t. the first argument')
             from .dict import ConfigDict
             from .list import ConfigList
             from .tuple import ConfigTuple
@@ -33,7 +43,7 @@ class ConfigNodeMeta(NamespaceableMeta):
             else:
                 t = ConfigScalar
 
-            return t(value=value, _force_type=True, _nodes_cache=_nodes_cache, _cache_nodes=True, _force_new=_force_new, _deep_new=_deep_new, **kwargs)
+            return t(value, *args, _force_type=True, _nodes_cache=_nodes_cache, _cache_nodes=True, _force_new=_force_new, _deep_new=_deep_new, **kwargs)
         
         from .composed import ComposedNode
         if issubclass(cls, ComposedNode):
@@ -42,12 +52,12 @@ class ConfigNodeMeta(NamespaceableMeta):
             kwargs['_force_new'] = _force_new
             kwargs['_deep_new'] = _deep_new
 
-        if cls is ConfigNode:
-            ret = super().__call__(**kwargs)
+        if has_value:
+            ret = super().__call__(value, *args, **kwargs)
         else:
-            ret = super().__call__(value, **kwargs)
+            ret = super().__call__(*args, **kwargs)
 
-        if _cache_nodes and _nodes_cache is not None:
+        if has_value and _cache_nodes and _nodes_cache is not None:
             _nodes_cache[id(value)] = ret
  
         return ret
@@ -130,6 +140,12 @@ class ConfigNode(metaclass=ConfigNodeMeta):
             return self.yamlfigns.on_premerge([], into)
 
         def on_premerge(self, path, into):
+            return self
+
+        def evaluate(self):
+            return self.yamlfigns.on_evaluate([], self)
+
+        def on_evaluate(self, path, root):
             return self
 
         def copy(self):
