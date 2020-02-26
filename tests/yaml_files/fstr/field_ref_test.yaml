@@ -1,0 +1,7 @@
+---
+other: 2
+str: f'Is {other**2} equal to {other*2}?'
+
+###EXPECTED
+other: 2
+str: Is 4 equal to 4?
