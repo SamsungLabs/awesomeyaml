@@ -143,10 +143,16 @@ class ConfigNode(metaclass=ConfigNodeMeta):
             return self
 
         def evaluate(self):
-            return self.yamlfigns.on_evaluate([], self)
+            return self.yamlfigns.evaluate_node([], self)
+            
+        def evaluate_node(self, path, root):
+            evaluated = self.yamlfigns.on_evaluate(path, root)
+            assert evaluated is not self
+            assert not isinstance(evaluated, ConfigNode)
+            return evaluated
 
         def on_evaluate(self, path, root):
-            return self
+            return self.yamlfigns.value
 
         def copy(self):
             return ConfigNode(self, _force_new=True, _deep_new=False)

@@ -8,14 +8,16 @@ class XRefNode(ConfigScalar(str)):
         super().__init__(value, **kwargs)
 
     @namespace('yamlfigns')
-    def on_evaluate(self, path, root):
+    def on_evaluate(self, path, ctx):
         chain = [ComposedNode.get_str_path(path)]
         curr = self
         while isinstance(curr, XRefNode):
-            ref = root.yamlfigns.get_node(curr)
+            ref = ctx.yamlfigns.get_node(curr)
             if ref is None:
                 msg = f'Referenced node {str(curr)!r} is missing, while following a chain of references: {chain}'
                 raise ValueError(msg)
             chain.append(str(curr))
             curr = ref
-        return curr
+        assert curr is not self
+        return ctx.evaluate_node(curr, prefix=chain[-1])
+        #return curr.yamlfigns.on_evaluate(path, ctx)

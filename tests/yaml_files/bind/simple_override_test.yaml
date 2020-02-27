@@ -12,5 +12,5 @@ skip
 
 ###VALIDATE
 from tests.utils import cubic_f
-self.assertIs(result.f.yamlfigns.func, cubic_f)
+self.assertIs(result.f.func, cubic_f)
 self.assertEqual(result.f(2), 11)

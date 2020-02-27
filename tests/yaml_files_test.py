@@ -44,7 +44,7 @@ class YamlFileTest():
     def test(self):
         from yamlfig.config import Config
         import yaml
-        result = Config(self.test_yaml, filename=self.test_file)
+        result = Config.build(self.test_yaml, filename=self.test_file)
         expected = yaml.load(self.expected_result, Loader=yaml.Loader)
         if expected != 'skip':
             self.assertEqual(result, expected)

@@ -25,17 +25,22 @@ class Builder():
     def get_current_file(self):
         return self._current_file
 
-    def add_multiple_sources(self, *sources, raw_yaml=None):
-        if not isinstance(raw_yaml, collections.Sequence):
-            raw_yaml = [raw_yaml] * len(sources)
-        else:
-            if isinstance(raw_yaml, str) or isinstance(raw_yaml, bytes):
-                raise ValueError('Expected sequence but not str or bytes')
-            if len(raw_yaml) != len(sources):
-                raise ValueError('Length of "sources" and "raw_yaml" must match')
+    def add_multiple_sources(self, *sources, raw_yaml=None, filename=None):
+        def sanitize(arg, arg_name):
+            if not isinstance(arg, collections.Sequence) or isinstance(arg, str) or isinstance(arg, bytes):
+                arg = [arg] * len(sources)
+            else:
+                #if isinstance(arg, str) or isinstance(arg, bytes):
+                #    raise ValueError(f"{arg_name!r}: Expected sequence but not str or bytes")
+                if len(arg) != len(sources):
+                    raise ValueError(f"Length of 'sources' and {arg_name!r} must match")
 
-        for source, raw in zip(sources, raw_yaml):
-            self.add_source(source, raw_yaml=raw)
+            return arg
+
+        raw_yaml = sanitize(raw_yaml, 'raw_yaml')
+        filename = sanitize(filename, 'filename')
+        for source, raw, fname in zip(sources, raw_yaml, filename):
+            self.add_source(source, raw_yaml=raw, filename=fname)
 
     def add_source(self, source, raw_yaml=None, filename=None):
         ''' Parse a stream of yaml documents specified by `source` and add them to the list of stages.
@@ -86,7 +91,6 @@ class Builder():
 
         self.preprocess()
         self.flatten()
-        self.evaluate()
         return self.stages[0]
 
     def preprocess(self):
@@ -128,14 +132,6 @@ class Builder():
             self.stages[0].yamlfigns.merge(self.stages[i])
 
         self.stages = [self.stages[0]]
-
-    def evaluate(self):
-        if not self.stages:
-            return
-        if len(self.stages) != 1:
-            raise ValueError('Expected flat config')
-
-        self.stages[0] = self.stages[0].yamlfigns.evaluate()
 
     def get_lookup_dirs(self, ref_point):
         if ref_point is not None:

@@ -1,52 +1,69 @@
-import functools
-
+from .nodes.node import ConfigNode
 from .nodes.composed import ComposedNode
-from .nodes.delete import DelNode
+from .namespace import Namespace, NamespaceableMeta
 
 
-class EvalContext():
-    def __init__(self, sources):
-        self.sources = tuple(sources)
+class EvalContext(metaclass=NamespaceableMeta):
+    def __init__(self, config_dict):
+        self.cfg = config_dict
+        self._removed_nodes = {}
+        self._eval_cache = {}
+        self._done = False
 
-    def __repr__(self):
-        return f'<Object {type(self).__name__!r} at 0x{id(self):02x} with {len(self.sources)} sources>'
+    class yamlfigns(Namespace):
+        def get_node(self, *path, **kwargs):
+            def access_fn(node, component):
+                return node[component]
+            def query_fn(node, component):
+                try:
+                    _ = node[component]
+                    return True
+                except:
+                    return False
 
-    def __str__(self):
-        return '---\n'.join(map(str, self.sources))
+            return ComposedNode.yamlfigns._get_node(self.ecfg, access_fn, query_fn, *path, **kwargs)
 
-    def get_node(self, *path, default=ValueError):
-        str_path = ComposedNode.get_str_path(*path)
-        if not self.sources:
-            if not default:
-                raise KeyError('Node with path: {str_path!r} does not exists in an eval context {self!r}')
-        if len(self.sources) == 1:
-            return self.sources[0].get_node(path, return_intermediate=False, include_names=False, allow_incomplete=None)
+        def remove_node(self, *path):
+            def remove_fn(node, component):
+                del node[component]
+            
+            return ComposedNode.yamlfigns._remove_node(self, remove_fn, *path)
 
-        candidate = None
-        start = None
+        def named_children(self, allow_duplicates=True):
+            memo = set()
+            for name, child in self.ecfg.items():
+                if not allow_duplicates:
+                    if id(child) in memo:
+                        continue
+                    memo.add(id(child))
+                yield name, child
 
-        candidate, index = self.rfind(name, start=None, return_intermediate=True, include_names=True)
-        start = index - 1
+    def evaluate_node(self, cfgobj, prefix=None):
+        if not isinstance(cfgobj, ConfigNode):
+            return cfgobj
 
-        # Check for 'weak' and 'force'
-        while not candidate[-1][1].yamlfigns.force:
-            try:
-                override, index2 = self.rfind(name, start=start, return_intermediate=True, include_names=True)
-                start = index2 - 1
-                if (candidate[-1][1].yamlfigns.weak and not override[-1][1].yamlfigns.weak) or (not candidate[-1][1].yamlfigns.force and override[-1][1].yamlfigns.force):
-                    candidate = override
-                    index = index2
-            except KeyError:
-                break
+        prefix = ComposedNode.get_list_path(prefix, check_types=False) or []
+        def maybe_evaluate(node, name):
+            if id(node) in self._eval_cache:
+                return self._eval_cache[id(node)]
+            path = list(prefix)
+            if name:
+                path.append(name)
+            e = node.yamlfigns.evaluate_node(path, self)
+            self._eval_cache[id(node)] = e
+            return e
 
-    def get_node_dels(self, name):
-        ret = []
-        path = EvalContext.split_name(name)
-        for i, source in enumerate(self.sources):
-            nodes = EvalContext._find_in_node(source, path, return_intermediate=True, include_names=False, allow_incomplete=True)
-            for node in nodes:
-                if node.yamlfigns.delete:
-                    ret.append(i)
-                    break
+        evaluated_cfgobj = maybe_evaluate(cfgobj, '')
+        if not cfgobj.yamlfigns.is_leaf:
+            for name, child in cfgobj.yamlfigns.named_children():
+                child_path = prefix + [name]
+                evaluated_child = self.evaluate_node(child, prefix=child_path)
+                evaluated_cfgobj[name] = evaluated_child
 
-        return ret
+        return evaluated_cfgobj
+
+    def evaluate(self):
+        self._eval_cache.clear()
+        self.ecfg = self.cfg.yamlfigns.evaluate_node([], self)
+        self._eval_cache[id(self.cfg)] = self.ecfg
+        return self.evaluate_node(self.cfg)

@@ -16,6 +16,7 @@ def _maybe_parse_scalar(loader, node, reparse=True):
 
     return ret
 
+
 def _make_obj(loader, node, objtype, reparse_scalars=False):
     args = []
     kwargs = {}
@@ -33,6 +34,7 @@ def _make_obj(loader, node, objtype, reparse_scalars=False):
         del kwargs['*']
 
     return objtype(*args, **kwargs)
+
 
 def _make_node(loader, node, node_type=ConfigNode, kwargs=None, data_arg_name=None):
     kwargs = kwargs or {}
@@ -55,18 +57,23 @@ def _make_node(loader, node, node_type=ConfigNode, kwargs=None, data_arg_name=No
 def _del_constructor(loader, node):
     return _make_node(loader, node, kwargs={ 'delete': True })
 
+
 def _weak_constructor(loader, node):
     return _make_node(loader, node, kwargs={ 'merge_mode': ConfigNode.WEAK })
+
 
 def _force_constructor(loader, node):
     return _make_node(loader, node, kwargs={ 'merge_mode': ConfigNode.FORCE })
 
+
 def _merge_constructor(loader, node):
     return _make_node(loader, node, kwargs={ 'delete': False })
+
 
 def _append_constructor(loader, node):
     from .nodes.append import AppendNode
     return _make_node(loader, node, node_type=AppendNode)
+
 
 def _metadata_constructor(loader, tag_suffix, node):
     import pickle
@@ -78,6 +85,7 @@ def _metadata_constructor(loader, tag_suffix, node):
 
     kwargs['metadata'] = metadata
     return _make_node(loader, node, kwargs=kwargs)
+
 
 def _include_constructor(loader, node):
     from .nodes.include import IncludeNode
@@ -119,6 +127,14 @@ def _fstr_node_constructor(loader, node):
 
     return _make_node(loader, node, node_type=_maybe_fix_fstr)
 
+
+def _import_node_constructor(loader, node):
+    import importlib
+    module = importlib.import_module('.nodes.import', package='yamlfig')
+    ImportNode = module.ImportNode
+    return _make_node(loader, node, node_type=ImportNode)
+
+
 yaml.add_constructor('!del', _del_constructor)
 yaml.add_constructor('!weak', _weak_constructor)
 yaml.add_constructor('!force', _force_constructor)
@@ -132,6 +148,8 @@ yaml.add_multi_constructor('!bind:', _bind_node_constructor)
 yaml.add_constructor('!eval', _eval_node_constructor)
 yaml.add_constructor('!fstr', _fstr_node_constructor)
 yaml.add_implicit_resolver('!fstr', _fstr_regex)
+yaml.add_constructor('!import', _import_node_constructor)
+
 
 def _get_metadata_end(data, beg):
     _beg = beg+2
@@ -161,6 +179,7 @@ def _get_metadata_end(data, beg):
 
     return end
 
+
 def _get_metadata_content(data):
     _metadata_tag = '!metadata'
     curr_pos = data.find(_metadata_tag)
@@ -176,6 +195,7 @@ def _get_metadata_content(data):
             yield beg, end
 
         curr_pos = data.find(_metadata_tag, end+1)
+
 
 def _encode_metadata(data):
     import pickle

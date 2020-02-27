@@ -146,6 +146,54 @@ class ComposedNode(ConfigNode):
         def has_child(self, name):
             return name in self._children
 
+        @staticmethod
+        def _get_node(root, access_fn, query_fn, *path, intermediate=False, names=False, incomplete=None):
+            path = ComposedNode.get_list_path(*path)
+
+            ret = []
+            def _add(child, name):
+                if names:
+                    path = []
+                    if ret:
+                        path = ret[-1][2] + [name]
+                    ret.append((child, name, path))
+                else:
+                    ret.append(child)
+            
+            _add(root, None)
+            node = root
+            found = True
+            for component in path:
+                if not query_fn(node, component): #not isinstance(node, ComposedNode) or not node.yamlfigns.has_child(component):
+                    _add(None, component)
+                    found = False
+                    break
+
+                #node = node.yamlfigns.get_child(component)
+                node = access_fn(node, component)
+                _add(node, component)
+
+            if not found and not incomplete:
+                if incomplete is None:
+                    return None
+
+                raise KeyError(f'{ComposedNode.join_path(path)!r} does not exist within {root!r}')
+
+            return ret if intermediate else ret[-1]
+
+        @staticmethod
+        def _remove_node(root, remove_fn, *path):
+            nodes = root.yamlfigns.get_node(*path, intermediate=True, names=True, incomplete=None)
+            if nodes is None:
+                return None
+            if len(nodes) == 1:
+                raise ValueError(f'Cannot remove self from self')
+            assert len(nodes) >= 2
+            node, name, _ = nodes[-1]
+            assert node is not None
+            parent, _, _ = nodes[-2]
+            return remove_fn(parent, name)
+
         def get_node(self, *path, intermediate=False, names=False, incomplete=None):
             ''' Inputs:
                     - `path` either a list of names (str or int) which should be looked up, or a str equivalent to calling ComposedNode.join_path on an analogical list
@@ -167,37 +215,14 @@ class ComposedNode(ConfigNode):
                 Raises:
                     `KeyError` if node cannot be found and `incomplete` evaluates to False and is not None
             '''
-            path = ComposedNode.get_list_path(*path)
+            def access_fn(node, component):
+                return node.yamlfigns.get_child(component)
+            def query_fn(node, component):
+                if not isinstance(node, ComposedNode):
+                    return False
+                return node.yamlfigns.has_child(component)
 
-            ret = []
-            def _add(child, name):
-                if names:
-                    path = []
-                    if ret:
-                        path = ret[-1][2] + [name]
-                    ret.append((child, name, path))
-                else:
-                    ret.append(child)
-            
-            _add(self, None)
-            node = self
-            found = True
-            for component in path:
-                if not isinstance(node, ComposedNode) or not node.yamlfigns.has_child(component):
-                    _add(None, component)
-                    found = False
-                    break
-
-                node = node.yamlfigns.get_child(component)
-                _add(node, component)
-
-            if not found and not incomplete:
-                if incomplete is None:
-                    return None
-
-                raise KeyError(f'{ComposedNode.join_path(path)!r} does not exist within {self!r}')
-
-            return ret if intermediate else ret[-1]
+            return ComposedNode.yamlfigns._get_node(self, access_fn, query_fn, *path, intermediate=intermediate, names=names, incomplete=incomplete)
 
         def get_first_not_missing_node(self, *path, intermediate=False, names=False):
             def _get_node(n):
@@ -212,16 +237,10 @@ class ComposedNode(ConfigNode):
             return nodes[-1] if not intermediate else nodes
 
         def remove_node(self, *path):
-            nodes = self.yamlfigns.get_node(*path, intermediate=True, names=True, incomplete=None)
-            if nodes is None:
-                return None
-            if len(nodes) == 1:
-                raise ValueError(f'Cannot remove self from self')
-            assert len(nodes) >= 2
-            node, name, _ = nodes[-1]
-            assert node is not None
-            parent, _, _ = nodes[-2]
-            return parent.yamlfigns.remove_child(name)
+            def remove_fn(node, component):
+                return node.yamlfigns.remove_child(component)
+
+            return ComposedNode.yamlfigns._remove_node(self, remove_fn, *path)
 
         def replace_node(self, new_node, *path):
             raise NotImplementedError()
@@ -235,7 +254,7 @@ class ComposedNode(ConfigNode):
                 keep = False
                 if condition(child_path, child):
                     keep = True
-                if not child.yamlfigns.is_leaf:
+                if isinstance(child, ComposedNode): #not child.yamlfigns.is_leaf:
                     possibly_new_child = child.yamlfigns.filter_nodes(condition, prefix=child_path)
                     keep = keep and bool(possibly_new_child)
                     if keep and possibly_new_child is not child:
@@ -263,7 +282,7 @@ class ComposedNode(ConfigNode):
                 else:
                     child_path = prefix + [name]
                     possibly_new_child = child
-                    if not child.yamlfigns.is_leaf:
+                    if isinstance(child, ComposedNode): #not child.yamlfigns.is_leaf:
                         possibly_new_child = possibly_new_child.yamlfigns.map_nodes(map_fn, prefix=child_path, cache_results=cache_results, cache=cache, leafs_only=leafs_only)
                         #if not leafs_only:
                         #    possibly_new_child = map_fn(child_path, possibly_new_child)
@@ -351,7 +370,7 @@ class ComposedNode(ConfigNode):
             return self.yamlfigns.map_nodes(lambda path, node: node.yamlfigns.on_preprocess(path, builder), cache_results=True, leafs_only=False)
 
         def evaluate(self):
-            return self.yamlfigns.map_nodes(lambda path, node: node.yamlfigns.on_evaluate(path, self), cache_results=True, leafs_only=False)
+            return self.yamlfigns.map_nodes(ConfigNode.yamlfigns.evaluate_node, cache_results=True, leafs_only=False)
 
         def merge(self, other):
             other.yamlfigns.premerge(self)
@@ -370,12 +389,12 @@ class ComposedNode(ConfigNode):
                     self.yamlfigns.set_child(key, value)
                 else:
                     merge = False
-                    if not child.yamlfigns.is_leaf: #and type(child) == type(value):
-                        try:
-                            possibly_new_child = child.yamlfigns.merge(value)
-                            merge = True
-                        except (TypeError, AttributeError):
-                            pass
+                    #if not child.yamlfigns.is_leaf: #and type(child) == type(value):
+                    try:
+                        possibly_new_child = child.yamlfigns.merge(value)
+                        merge = True
+                    except (TypeError, AttributeError):
+                        pass
 
                     if merge:
                         if not possibly_new_child and not possibly_new_child.yamlfigns.has_priority_over(value):

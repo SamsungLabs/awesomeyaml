@@ -1,17 +1,24 @@
 from .dict import ConfigDict
-from ..namespace import namespace
+from ..namespace import namespace, staticproperty
 from ..utils import import_name
+
+from functools import partial
 
 
 class BindNode(ConfigDict):
-    def __init__(self, func, args, **kwargs):
-        self._func = func
+    def __init__(self, func, args=None, **kwargs):
+        ''' Func can be either str naming a function, or a pair (name, args) in which canse args should be None
+        '''
+        if not isinstance(func, str):
+            if isinstance(func, tuple):
+                if args is not None:
+                    raise ValueError('"args" passed directly and toghether with "func" resulting in an ambiguous assignment')
+                self._func, args = func
+        else:
+            self._func = func
+
         kwargs.setdefault('delete', True)
         super().__init__(args, **kwargs)
-
-    def __call__(self, *args, **kwargs):
-        kwargs = { **self, **kwargs }
-        return self._func(*args, **kwargs)
 
     def __bool__(self):
         return bool(self._func)
@@ -31,11 +38,24 @@ class BindNode(ConfigDict):
         return super().yamlfigns.merge(other)
 
     @namespace('yamlfigns')
-    def on_evaluate(self, path, root):
+    def on_evaluate(self, path, ctx):
         self._func = import_name(self._func)
-        return self
+        return partial(self._func, **self)
 
     @namespace('yamlfigns')
     @property
     def func(self):
         return self._func
+
+    def _get_value(self):
+        return (self._func, super()._get_value())
+
+    def _set_value(self, value):
+        self._func, sval = value
+        return super()._set_value(sval)
+
+    @namespace('yamlfigns')
+    @staticproperty
+    @staticmethod
+    def is_leaf():
+       return True

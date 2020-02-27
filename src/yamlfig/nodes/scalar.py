@@ -143,3 +143,10 @@ class ConfigScalar(ConfigScalarMarker, metaclass=ConfigScalarMeta):
     def named_nodes(self, prefix='', recurse=True, include_self=True, allow_duplicates=True):
         if include_self:
             yield prefix, self
+
+    @namespace('yamlfigns')
+    def on_evaluate(self, path, ctx):
+        if self._dyn_base in [configbool, ConfigNone]:
+            return self._get_value()
+
+        return self._dyn_base(self)

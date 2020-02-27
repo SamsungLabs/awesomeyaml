@@ -1,0 +1,10 @@
+---
+f: !import import_name
+
+
+###EXPECTED
+skip
+
+###VALIDATE
+from yamlfig.utils import import_name as target
+self.assertIs(result.f, target)

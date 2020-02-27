@@ -136,16 +136,52 @@ def import_name(symbol_name):
         entity_name = module_name
         module_name = None
 
-    entity = None
     if module_name is None:
         if entity_name not in globals():
-            raise KeyError(f'Cannot find an entity named: {entity_name!r} in global variables')
-        entity = globals()[entity_name]
+            import builtins
+            if entity_name not in dir(builtins):
+                import importlib
+                try:
+                    return importlib.import_module(entity_name)
+                except ImportError as e:
+                    raise ImportError(f'Cannot find an entity named {entity_name!r} in the global variables, the builtin module and cannot import it as a top-level module - error: {str(e)}')
+            else:
+                return getattr(builtins, entity_name)
+        else:
+            return globals()[entity_name]
     else:
         import importlib
         module = importlib.import_module(module_name)
         if entity_name not in dir(module):
-            raise KeyError(f'Cannot find an entity named: {entity_name!r} in module: {module}')
-        entity = getattr(module, entity_name)
+            try:
+                return importlib.import_module(module_name + '.' + entity_name)
+            except ImportError:
+                raise ImportError(f'Cannot find an entity named: {entity_name!r} in module: {module}')
+        return getattr(module, entity_name)
 
-    return entity
+    raise RuntimeError('Unreachable')
+
+
+class Bunch(dict):
+    def __init__(self, other):
+        super().__init__(other)
+
+    def __getattr__(self, name):
+        if name not in self:
+            raise AttributeError(f'Object {type(self).__name__!r} does not have attribute {name!r}')
+        return self[name]
+
+    def __setattr__(self, name, value):
+        if name.startswith('_'):
+            return super().__setattr__(name, value)
+
+        if name in self.__dict__:
+            raise ValueError('Name conflict!')
+
+        self[name] = value
+
+    def __delattr__(self, name):
+        try:
+            super().__delattr__(name)
+        except AttributeError:
+            del self[name]

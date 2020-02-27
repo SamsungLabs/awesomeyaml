@@ -18,8 +18,8 @@ class StreamNode(ConfigList):
         self.append(self.builder.stages[0])
         return self.builder.stages[0].yamlfigns.on_premerge(path, into)
 
-    @namespace('yamlfigns')
-    @staticproperty
-    @staticmethod
-    def is_leaf():
-        return True
+    #@namespace('yamlfigns')
+    #@staticproperty
+    #@staticmethod
+    #def is_leaf():
+    #    return True

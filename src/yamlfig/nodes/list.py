@@ -109,6 +109,9 @@ class ConfigList(ComposedNode, list):
 
         return super().yamlfigns.merge(other)
 
+    @namespace('yamlfigns')
+    def on_evaluate(self, path, root):
+        return list(self)
 
     @namespace('yamlfigns')
     @staticproperty

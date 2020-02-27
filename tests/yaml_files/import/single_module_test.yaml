@@ -1,0 +1,9 @@
+---
+m: !import tests
+
+###EXPECTED
+skip
+
+###VALIDATE
+import tests
+self.assertIs(result.m, tests)

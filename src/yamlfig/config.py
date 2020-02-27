@@ -1,34 +1,29 @@
 from .nodes.dict import ConfigDict
-from .nodes.node import ConfigNodeMeta
-from .namespace import namespace, staticproperty
-
-import collections
+from .eval_context import EvalContext
+from .utils import Bunch
 
 
-class ConfigMeta(ConfigNodeMeta):
-    def __call__(cls, value=None, idx=None, raw_yaml=None, filename=None):
-        ''' `value` can be: str (either a filename or yaml), file object, or a list of those
-        '''
-        if isinstance(value, dict) or value is None:
-            obj = cls.__new__(cls, value)
-            obj.__init__(value=value, idx=idx)
-            return obj
+class Config(Bunch):
+    def __init__(self, config_dict=None):
+        if config_dict is not None and not isinstance(config_dict, dict):
+            raise ValueError('dict or None expected')
+
+        _old = config_dict
+        config_dict = ConfigDict(config_dict)
+        assert not isinstance(_old, ConfigDict) or config_dict is _old
+        if config_dict:
+            self._source = config_dict
+            pre_evaluate = config_dict.yamlfigns.deepcopy()
+            eval_ctx = EvalContext(pre_evaluate)
+            evaluated = eval_ctx.evaluate()
         else:
-            from .builder import Builder
-            b = Builder()
-            if not isinstance(value, collections.Sequence) or isinstance(value, str):
-                b.add_source(value, raw_yaml=raw_yaml, filename=filename)
-            else:
-                b.add_multiple_sources(*value, raw_yaml=raw_yaml, filename=filename)
-            return Config(value=b.build(), idx=idx)
+            evaluated = {}
 
+        super().__init__(evaluated)
 
-class Config(ConfigDict, metaclass=ConfigMeta):
-    def __init__(self, value=None, idx=None, raw_yaml=None):
-        super().__init__(value=value, idx=idx)
-
-    @namespace('yamlfigns')
-    @staticproperty
-    @staticmethod
-    def is_root():
-        return True
+    @classmethod
+    def build(cls, *sources, raw_yaml=None, filename=None):
+        from .builder import Builder
+        b = Builder()
+        b.add_multiple_sources(*sources, raw_yaml=raw_yaml, filename=filename)
+        return Config(b.build())

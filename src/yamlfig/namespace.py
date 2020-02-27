@@ -30,7 +30,8 @@ class Namespace():
         raise AttributeError(f'{self!r} does not have attribute {name!r}')
 
     def __getattr__(self, name):
-        return self._resolve_endpoint(name)
+        endpoint = self._resolve_endpoint(name)
+        return endpoint.__get__(None, self._cls)
 
     def __setattr__(self, name, value):
         if not name.startswith('_'):

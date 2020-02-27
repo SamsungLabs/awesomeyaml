@@ -25,7 +25,7 @@ class CreateFromFileTest(unittest.TestCase):
     def test_yaml(self):
         import io
         from yamlfig.config import Config
-        cfg = Config(self._file_content)
+        cfg = Config.build(self._file_content)
         self._check_test_obj(cfg)
 
     def test_filename(self):
@@ -37,7 +37,7 @@ class CreateFromFileTest(unittest.TestCase):
             fp.write(self._file_content)
             fp.flush()
             fp.close()
-            cfg = Config(fp.name)
+            cfg = Config.build(fp.name)
             self._check_test_obj(cfg)
         finally:
             os.unlink(fp.name)
@@ -49,7 +49,7 @@ class CreateFromFileTest(unittest.TestCase):
             fp.write(self._file_content)
             fp.flush()
             fp.seek(0)
-            cfg = Config(fp)
+            cfg = Config.build(fp)
             self._check_test_obj(cfg)
 
 

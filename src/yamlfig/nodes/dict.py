@@ -1,5 +1,6 @@
 from .composed import ComposedNode
 from ..namespace import namespace
+from ..utils import Bunch
 
 
 class ConfigDict(ComposedNode, dict):
@@ -90,6 +91,10 @@ class ConfigDict(ComposedNode, dict):
             raise TypeError('Dict expected')
 
         return super().yamlfigns.merge(other)
+
+    @namespace('yamlfigns')
+    def on_evaluate(self, path, root):
+        return Bunch(self)
 
     def __repr__(self, simple=False):
         dict_repr = '{' + ', '.join([f'{n!r}: {c.__repr__(simple=True)}' for n, c in self.yamlfigns.named_children()]) + '}'

@@ -1,0 +1,8 @@
+---
+f: !import open
+
+###EXPECTED
+skip
+
+###VALIDATE
+self.assertIs(result.f, open)
