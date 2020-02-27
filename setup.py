@@ -1,21 +1,30 @@
 #!/usr/bin/env python
 
 from setuptools import setup, find_packages
+from setuptools.command.install import install
 
-import os
 import importlib.util
 from pathlib import Path
 
 version_file = Path(__file__).parent.joinpath('src', 'yamlfig', 'version.py')
-_dist_file = version_file.parent.joinpath('_dist_info.py')
-
 spec = importlib.util.spec_from_file_location('yamlfig_version', version_file)
 yamlfig_version = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(yamlfig_version)
 
-if not _dist_file.exists():
-    with open(_dist_file, 'w') as df:
-        df.write('\n'.join(map(lambda dname: dname+' = '+repr(getattr(yamlfig_version, dname)), yamlfig_version.__all__)) + '\n')
+class build_maybe_inplace(install):
+    def run(self):
+        _dist_file = version_file.parent.joinpath('_dist_info.py')
+        assert not _dist_file.exists()
+        #if not _dist_file.exists():
+        with open(_dist_file, 'w') as df:
+            df.write('\n'.join(map(lambda dname: dname+' = '+repr(getattr(yamlfig_version, dname)), yamlfig_version.__all__)) + '\n')
+
+        return super().run()
+
+#with open('/home/SERILOCAL/l.dudziak/test.txt', 'a') as t:
+#    import sys
+#    t.write(' '.join(sys.argv))
+#    t.write('\n')
 
 setup(name='YamlFig',
       version=yamlfig_version.__version__,
@@ -29,5 +38,8 @@ setup(name='YamlFig',
           'pyyaml'
       ],
       packages=find_packages(where='src'),
-      package_dir={ '': 'src' }
+      package_dir={ '': 'src' },
+      cmdclass={
+          'install': build_maybe_inplace
+      }
 )
