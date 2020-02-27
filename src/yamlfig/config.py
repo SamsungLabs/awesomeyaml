@@ -27,3 +27,7 @@ class Config(Bunch):
         b = Builder()
         b.add_multiple_sources(*sources, raw_yaml=raw_yaml, filename=filename)
         return Config(b.build())
+
+    @property
+    def source(self):
+        return self._source
