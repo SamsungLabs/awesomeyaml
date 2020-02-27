@@ -17,7 +17,7 @@ try:
             __repo__ = r.remotes.origin.url
 
         __commit__ = r.head.commit.hexsha
-        if r.is_dirty:
+        if r.is_dirty():
             __commit__ += ' (dirty)'
     except git.InvalidGitRepositoryError:
         raise ImportError()
