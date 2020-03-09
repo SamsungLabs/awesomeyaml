@@ -70,6 +70,7 @@ for file in yaml_files_dir.glob("**/*" + _yaml_test_file_suffix):
     try:
         test_case_type = YamlFileTest.make_test_case_type(test_file=str(file), class_arg=class_arg)
         globals()[test_case_type.__name__] = test_case_type
+        del test_case_type
     except Exception as e:
         print(f'Yaml test file {os.path.relpath(full_path, curr_dir)!r} will be ignored due to the following error: {e}')
 
