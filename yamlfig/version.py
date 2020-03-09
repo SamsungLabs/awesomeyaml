@@ -8,7 +8,7 @@ try:
     from pathlib import Path
 
     try:
-        r = git.Repo(Path(__file__).parent.parent.parent)
+        r = git.Repo(Path(__file__).parents[1])
         __has_repo__ = True
 
         if not r.remotes:

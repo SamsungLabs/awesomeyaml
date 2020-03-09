@@ -6,7 +6,7 @@ from setuptools.command.install import install
 import importlib.util
 from pathlib import Path
 
-version_file = Path(__file__).parent.joinpath('src', 'yamlfig', 'version.py')
+version_file = Path(__file__).parent.joinpath('yamlfig', 'version.py')
 spec = importlib.util.spec_from_file_location('yamlfig_version', version_file)
 yamlfig_version = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(yamlfig_version)
@@ -21,10 +21,6 @@ class build_maybe_inplace(install):
 
         return super().run()
 
-#with open('/home/SERILOCAL/l.dudziak/test.txt', 'a') as t:
-#    import sys
-#    t.write(' '.join(sys.argv))
-#    t.write('\n')
 
 setup(name='YamlFig',
       version=yamlfig_version.__version__,
@@ -37,8 +33,8 @@ setup(name='YamlFig',
       install_requires=[
           'pyyaml'
       ],
-      packages=find_packages(where='src'),
-      package_dir={ '': 'src' },
+      packages=find_packages(where='.', exclude=['tests']),
+      package_dir={ '': '.' },
       cmdclass={
           'install': build_maybe_inplace
       }
