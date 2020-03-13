@@ -53,9 +53,9 @@ class Builder():
                                  - if `raw_yaml` is set to `None` specifically (default), the function will try guessing whether `source` is a
                                    name of a file or a yaml string to be parsed directly. In order to do that, it will behave as if `raw_yaml` was set to `False`
                                    and in case `FileNotFoundError` is raised, it will fallback to the case when `raw_yaml` is set to `True`.
-                                - if `bool(raw_yaml)` evalues to `False` and is not None, the function will attempt to open and read content of a file named `source`,
+                                - if `bool(raw_yaml)` evaluates to `False` and is not None, the function will attempt to open and read content of a file named `source`,
                                   raising an error if such a file does not exist
-                                - if `bool(raw_yaml)` evalues to `True`, `source` is treated as a yaml string and passed directly to the `yamlfig.yaml.parse`
+                                - if `bool(raw_yaml)` evaluates to `True`, `source` is treated as a yaml string and passed directly to the `yamlfig.yaml.parse`
             Returns:
                 None
         '''
@@ -138,17 +138,17 @@ class Builder():
             yield os.path.dirname(ref_point)
         yield os.getcwd()
 
-    def get_subbuilder(self, requestor):
+    def get_subbuilder(self, requester):
         if self._current_stage is None:
             raise RuntimeError('SubBuilder requested when not processing any stage!')
 
-        return SubBuilder(requestor, self)
+        return SubBuilder(requester, self)
 
 
 class SubBuilder(Builder):
     def __init__(self, srcnode, parent):
         super().__init__()
-        self.requestor = srcnode
+        self.requester = srcnode
         self.parent = parent
         self.stage = parent.get_current_stage_idx()
 

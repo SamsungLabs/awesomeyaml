@@ -155,7 +155,7 @@ class ConfigNode(metaclass=ConfigNodeMeta):
             return self.yamlfigns.value
 
         def copy(self):
-            return ConfigNode(self, _force_new=True, _deep_new=False)
+            return ConfigNode(self, _force_new=True, _deep_new=False) # pylint: disable=unexpected-keyword-arg
 
         def deepcopy(self):
-            return ConfigNode(self, _force_new=True, _deep_new=True)
+            return ConfigNode(self, _force_new=True, _deep_new=True) # pylint: disable=unexpected-keyword-arg

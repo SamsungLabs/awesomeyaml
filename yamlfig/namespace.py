@@ -83,17 +83,17 @@ class staticproperty(property):
             return self
         if self.fget is None:
             raise AttributeError("unreadable attribute")
-        return self.fget.__get__(inst, cls)()
+        return self.fget.__get__(inst, cls)() # pylint: disable=no-member
 
     def __set__(self, inst, val):
         if self.fset is None:
             raise AttributeError("can't set attribute")
-        return self.fset.__get__(inst)(val)
+        return self.fset.__get__(inst)(val) # pylint: disable=no-member
 
     def __delete__(self, inst):
         if self.fdel is None:
             raise AttributeError("can't delete attribute")
-        return self.fdel.__get__(inst)()
+        return self.fdel.__get__(inst)() # pylint: disable=no-member
 
 
 class namespaceable_property(property):
@@ -139,7 +139,7 @@ class NamespaceableMeta(type):
                 continue
 
             if name.startswith('_'):
-                raise ValueError(f'Private entities (with names starting with "_") cannot be put in a namesapce, when processing namespace attribute for entity: {value}, with name: {name!r}')
+                raise ValueError(f'Private entities (with names starting with "_") cannot be put in a namespace, when processing namespace attribute for entity: {value}, with name: {name!r}')
             if namespace_name in clsnamespace and not (isinstance(clsnamespace[namespace_name], type) and issubclass(clsnamespace[namespace_name], Namespace)):
                 raise ValueError(f'Cannot hide a class member {name!r} under a namespace {namespace_name!r} as the namespace name {namespace_name!r} is already in use by {clsnamespace[namespace_name]}')
             if namespace_name in namespaces and namespaces[namespace_name][None] is not namespace_type:

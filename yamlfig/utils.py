@@ -62,7 +62,7 @@ class persistent_id(int):
         When running the above code, it's possible that only a couple of first objects will be processed
         (in my case first 2) because later objects will be allocated at the place of previous ones which will
         trick the `memo` within `process`. Therefore it's important to keep a reference to all objects
-        whose ids are kept to ensure their uniques. A couple of different solutions could be used to
+        whose ids are kept to ensure their uniqueness. A couple of different solutions could be used to
         address it, e.g.: instead of a set one could use dict and store pairs `id(obj): obj` within it;
         or simply precompute all objects ahead of execution and keep them in a separate container.
         Both approaches have very similar cost in terms of memory consumption  as the solution presented here
@@ -82,7 +82,7 @@ class persistent_id(int):
                         yield result
                 ```
 
-            the solution would be to either store pairs `id(obj): (obj, process(obj))` or have two memos which in both cases polutes the code;
+            the solution would be to either store pairs `id(obj): (obj, process(obj))` or have two memos which in both cases pollutes the code;
         - the second solution requires precomputing all values ahead of time which will not work nicely when chaining generators.
         The proposed solution requires simply changing `id` to `persistant_id` which is clean and nice:
             ```

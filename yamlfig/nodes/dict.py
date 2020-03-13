@@ -53,7 +53,7 @@ class ConfigDict(ComposedNode, dict):
         self._del(name)
 
     def __contains__(self, name):
-        return self.yamlfigns.has_child(name)
+        return self.yamlfigns.has_child(name) # pylint: disable=no-value-for-parameter
 
     @namespace('yamlfigns')
     def set_child(self, name, value):
@@ -74,7 +74,7 @@ class ConfigDict(ComposedNode, dict):
 
     def pop(self, k, *d):
         val = dict.pop(self, k, *d)
-        if self.yamlfigns.has_child(k):
+        if self.yamlfigns.has_child(k): # pylint: disable=no-value-for-parameter
             ComposedNode.yamlfigns.remove_child(self, k)
         return val
 
@@ -97,7 +97,7 @@ class ConfigDict(ComposedNode, dict):
         return Bunch(self)
 
     def __repr__(self, simple=False):
-        dict_repr = '{' + ', '.join([f'{n!r}: {c.__repr__(simple=True)}' for n, c in self.yamlfigns.named_children()]) + '}'
+        dict_repr = '{' + ', '.join([f'{n!r}: {c.__repr__(simple=True)}' for n, c in self.yamlfigns.named_children()]) + '}' # pylint: disable=no-value-for-parameter
         if simple:
             return type(self).__name__ + dict_repr
 
@@ -117,4 +117,4 @@ class ConfigDict(ComposedNode, dict):
     def _set_value(self, other):
         self.clear()
         for name, child in other.items():
-            self.yamlfigns.set_child(name, child)
+            self.yamlfigns.set_child(name, child) # pylint: disable=no-value-for-parameter

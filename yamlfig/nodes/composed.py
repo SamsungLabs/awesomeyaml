@@ -36,7 +36,7 @@ class ComposedNode(ConfigNode):
                     raise ValueError(f'Invalid path: {path_str!r}')
                 end = match.end()
 
-            # the path is fine at the begining and internally doesn't have any "gaps" but has an incorrect suffix
+            # the path is fine at the beginning and internally doesn't have any "gaps" but has an incorrect suffix
             # (i.e. a part at the end which doesn't match our regular expression)
             if path_str and end != len(path_str):
                 raise ValueError(f'Invalid path: {path_str!r}')
@@ -117,7 +117,7 @@ class ComposedNode(ConfigNode):
         kwargs.pop('idx', None)
         kwargs.pop('metadata', None)
         _nodes_cache = _nodes_cache if _nodes_cache is not None else {}
-        self._children = { name: ConfigNode(child, **kwargs, _nodes_cache=_nodes_cache, _cache_nodes=_cache_nodes, _force_new=_force_new, _deep_new=_deep_new) for name, child in children.items() }
+        self._children = { name: ConfigNode(child, **kwargs, _nodes_cache=_nodes_cache, _cache_nodes=_cache_nodes, _force_new=_force_new, _deep_new=_deep_new) for name, child in children.items() } # pylint: disable=unexpected-keyword-arg
 
     class yamlfigns(Namespace):
         def set_child(self, name, value):
@@ -331,7 +331,7 @@ class ComposedNode(ConfigNode):
                 yield node
 
         def nodes_paths(self, prefix=None, recursive=True, include_self=False):
-            for path, _ in self.yamlfigns.nodes_with_paths(recursive=recursive, include_self=include_self, allow_duplicates=allow_duplicates):
+            for path, _ in self.yamlfigns.nodes_with_paths(recursive=recursive, include_self=include_self, allow_duplicates=True):
                 yield path
 
 

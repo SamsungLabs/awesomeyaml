@@ -7,12 +7,12 @@ from functools import partial
 
 class BindNode(ConfigDict):
     def __init__(self, func, args=None, **kwargs):
-        ''' Func can be either str naming a function, or a pair (name, args) in which canse args should be None
+        ''' Func can be either str naming a function, or a pair (name, args) in which case args should be None
         '''
         if not isinstance(func, str):
             if isinstance(func, tuple):
                 if args is not None:
-                    raise ValueError('"args" passed directly and toghether with "func" resulting in an ambiguous assignment')
+                    raise ValueError('"args" passed directly and together with "func" resulting in an ambiguous assignment')
                 self._func, args = func
         else:
             self._func = func
@@ -51,8 +51,8 @@ class BindNode(ConfigDict):
         return (self._func, super()._get_value())
 
     def _set_value(self, value):
-        self._func, sval = value
-        return super()._set_value(sval)
+        self._func, super_val = value
+        return super()._set_value(super_val)
 
     @namespace('yamlfigns')
     @staticproperty

@@ -60,7 +60,7 @@ class ConfigTuple(ComposedNode, tuple):
         return tuple.__contains__(self, value)
 
     def __repr__(self, simple=False):
-        tuple_repr = '(' + ', '.join([c.__repr__(simple=True) for c in self.yamlfigns.children()]) + ')'
+        tuple_repr = '(' + ', '.join([c.__repr__(simple=True) for c in self.yamlfigns.children()]) + ')' # pylint: disable=no-value-for-parameter
         if simple:
             return type(self).__name__ + tuple_repr
 

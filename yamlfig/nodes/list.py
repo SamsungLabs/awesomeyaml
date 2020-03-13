@@ -120,7 +120,7 @@ class ConfigList(ComposedNode, list):
         return False
 
     def __repr__(self, simple=False):
-        list_repr = '[' + ', '.join([c.__repr__(simple=True) for c in self.yamlfigns.children()]) + ']'
+        list_repr = '[' + ', '.join([c.__repr__(simple=True) for c in self.yamlfigns.children()]) + ']' # pylint: disable=no-value-for-parameter
         if simple:
             return type(self).__name__ + list_repr
 

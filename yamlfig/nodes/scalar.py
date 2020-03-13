@@ -105,7 +105,7 @@ class ConfigScalarMarker(ConfigNode):
 
 class ConfigScalar(ConfigScalarMarker, metaclass=ConfigScalarMeta):
     def __new__(cls, value, **kwargs):
-        return cls._dyn_base.__new__(cls, value)
+        return cls._dyn_base.__new__(cls, value) # pylint: disable=no-member
 
     def __init__(self, value, **kwargs):
         ConfigNode.__init__(self, **kwargs)
@@ -115,24 +115,24 @@ class ConfigScalar(ConfigScalarMarker, metaclass=ConfigScalarMeta):
             try:
                 self._dyn_base.__init__(self, value)
             except:
-                self._dyn_base.__init__(self)
+                self._dyn_base.__init__(self) # pylint: disable=no-member
 
     def __repr__(self, simple=False):
         if simple:
             t_prefix = ''
-            if type(self) is not ConfigScalar(self._dyn_base):
+            if type(self) is not ConfigScalar(self._dyn_base): # pylint: disable=no-member
                 t_prefix = type(self).__name__ + '('
-            return t_prefix + self._dyn_base.__repr__(self) + (')' if t_prefix else '')
+            return t_prefix + self._dyn_base.__repr__(self) + (')' if t_prefix else '') # pylint: disable=no-member
 
         node = ConfigNode.__repr__(self)
-        return node + '(' + self._dyn_base.__repr__(self) + ')'
+        return node + '(' + self._dyn_base.__repr__(self) + ')' # pylint: disable=no-member
 
     def __str__(self):
-        return self._dyn_base.__str__(self)
+        return self._dyn_base.__str__(self) # pylint: disable=no-member
 
     def _get_value(self):
-        if self._dyn_base in [configbool, ConfigNone]:
-            return self._dyn_base.get(self)
+        if self._dyn_base in [configbool, ConfigNone]: # pylint: disable=no-member
+            return self._dyn_base.get(self) # pylint: disable=no-member
 
         return self
 
@@ -140,13 +140,13 @@ class ConfigScalar(ConfigScalarMarker, metaclass=ConfigScalarMeta):
         raise RuntimeError(f'Cannot set value of an immutable config node: {self!r}')
 
     @namespace('yamlfigns')
-    def named_nodes(self, prefix='', recurse=True, include_self=True, allow_duplicates=True):
+    def named_nodes(self, prefix='', recursive=True, include_self=True, allow_duplicates=True):
         if include_self:
             yield prefix, self
 
     @namespace('yamlfigns')
     def on_evaluate(self, path, ctx):
-        if self._dyn_base in [configbool, ConfigNone]:
+        if self._dyn_base in [configbool, ConfigNone]: # pylint: disable=no-member
             return self._get_value()
 
-        return self._dyn_base(self)
+        return self._dyn_base(self) # pylint: disable=no-member
