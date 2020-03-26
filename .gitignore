@@ -1,3 +1,5 @@
 .vscode
 __pycache__
 *.egg-info
+docs/build/
+docs/source/yamlfig*
