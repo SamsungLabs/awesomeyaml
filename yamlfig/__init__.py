@@ -1,2 +1,7 @@
 from .version import *
-from .config import Config
+
+import config
+import builder
+import eval_context
+
+Config = config.Config
