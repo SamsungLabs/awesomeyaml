@@ -4,7 +4,18 @@ from .namespace import Namespace, NamespaceableMeta
 
 
 class EvalContext(metaclass=NamespaceableMeta):
+    ''' A class used to provide evaluation context for a top-level `yamlfig.nodes.ConfigDict`.
+        After the top level node is put within a context, it can be evaluated to create `yamlfig.utils.Bunch`
+        which will hold the evaluation result - evaluated nodes are no longer `yamlfig` nodes and can represent anything.
+        The primary use-case for this class and the resulting `Bunch` object is to construct a `yamlfig.Config` object
+        which basically combines the returned `Bunch` object with the original `ConfigDict`.
+    '''
     def __init__(self, config_dict):
+        ''' Arguments:
+                config_dict : a `yamlfig.nodes.ConfigDict` object to be evaluated,
+                    to construct a single `ConfigDict` from multiple sources
+                    `yamlfig.builder.Builder` can be used.
+        '''
         self.cfg = config_dict
         self._removed_nodes = {}
         self._eval_cache = {}
@@ -63,6 +74,9 @@ class EvalContext(metaclass=NamespaceableMeta):
         return evaluated_cfgobj
 
     def evaluate(self):
+        ''' Returns:
+                `yamlfig.utils.Bunch` representing evaluated config node.
+        '''
         self._eval_cache.clear()
         self.ecfg = self.cfg.yamlfigns.evaluate_node([], self)
         self._eval_cache[id(self.cfg)] = self.ecfg
