@@ -11,7 +11,7 @@ class EvalNode(ConfigScalar(str)):
 
     @namespace('yamlfigns')
     def on_evaluate(self, path, ctx):
-        gbls = copy.copy(globals())
+        gbls = copy.copy(ctx.get_eval_symbols())
         gbls.update(dict(ctx.yamlfigns.named_children()))
         lines = self.strip().split('\n')
         exec("\n".join(lines[:-1]), gbls)

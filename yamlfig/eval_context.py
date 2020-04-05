@@ -2,6 +2,8 @@ from .nodes.node import ConfigNode
 from .nodes.composed import ComposedNode
 from .namespace import Namespace, NamespaceableMeta
 
+import copy
+
 
 class EvalContext(metaclass=NamespaceableMeta):
     ''' A class used to provide evaluation context for a top-level `yamlfig.nodes.ConfigDict`.
@@ -10,16 +12,25 @@ class EvalContext(metaclass=NamespaceableMeta):
         The primary use-case for this class and the resulting `Bunch` object is to construct a `yamlfig.Config` object
         which basically combines the returned `Bunch` object with the original `ConfigDict`.
     '''
-    def __init__(self, config_dict):
+
+    _default_eval_symbols = {}
+
+    def __init__(self, config_dict, eval_symbols=None):
         ''' Arguments:
                 config_dict : a `yamlfig.nodes.ConfigDict` object to be evaluated,
                     to construct a single `ConfigDict` from multiple sources
                     `yamlfig.builder.Builder` can be used.
+                eval_symbols : a dict containing symbols which can be used when evaluating
+                    ``config_dict``. The values from this argument will be used to update
+                    the defaults from :py:meth:`get_default_eval_symbols`.
         '''
         self.cfg = config_dict
         self._removed_nodes = {}
         self._eval_cache = {}
         self._done = False
+        self._eval_symbols = copy.copy(EvalContext._default_eval_symbols)
+        if eval_symbols:
+            self._eval_symbols.update(eval_symbols)
 
     class yamlfigns(Namespace):
         def get_node(self, *path, **kwargs):
@@ -81,3 +92,49 @@ class EvalContext(metaclass=NamespaceableMeta):
         self.ecfg = self.cfg.yamlfigns.evaluate_node([], self)
         self._eval_cache[id(self.cfg)] = self.ecfg
         return self.evaluate_node(self.cfg)
+
+    @staticmethod
+    def set_default_eval_symbols(symbols):
+        ''' Sets the default symbols available to use when evaluating nodes.
+
+            The symbols provided can be used by certain node types on evaluation.
+            The defaults can be updated with values passed to the :py:meth:`__init__`
+            method.
+
+            Arguments:
+                symbols : a lookup table (dict) of available symbols - for exampe, can be provided by
+                    calling ``globals()`` in a module whose content one wishes to be available
+                    during evaluation.
+
+            Raises:
+                TypeError: if ``symbols`` is not a dict.
+        '''
+        if not isinstance(symbols, dict):
+            raise TypeError('dict expected')
+        EvalContext._default_eval_symbols = symbols
+
+    @staticmethod
+    def get_default_eval_symbols():
+        ''' Returns a dict with the default symbols available to use when evaluating nodes.
+
+            The symbols provided can be used by certain node types on evaluation.
+            The defaults can be updated with values passed to the :py:meth:`__init__`
+            method.
+
+            Returns:
+                dict: symbols available by default
+        '''
+        return EvalContext._default_eval_symbols
+
+    def get_eval_symbols(self):
+        ''' Returns a dict with symbols available when evaluating nodes within this :py:class:`EvalContext`.
+
+            Some node types might use this to evaluate their values.
+
+            The returned value considers both the default symbols (see :py:meth:`set_default_eval_symbols`) and
+            non-default ones passed to :py:meth:`__init__`.
+
+            Returns:
+                dict: symbols available in this evaluation context
+        '''
+        return self._eval_symbols
