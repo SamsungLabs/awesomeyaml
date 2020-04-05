@@ -6,10 +6,12 @@ from setuptools.command.install import install
 import importlib.util
 from pathlib import Path
 
-version_file = Path(__file__).parent.joinpath('yamlfig', 'version.py')
-spec = importlib.util.spec_from_file_location('yamlfig_version', version_file)
-yamlfig_version = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(yamlfig_version)
+package_name = 'yamlfig'
+
+version_file = Path(__file__).parent.joinpath(package_name, 'version.py')
+spec = importlib.util.spec_from_file_location('{}.version'.format(package_name), version_file)
+package_version = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(package_version)
 
 class build_maybe_inplace(install):
     def run(self):
@@ -17,13 +19,13 @@ class build_maybe_inplace(install):
         assert not _dist_file.exists()
         #if not _dist_file.exists():
         with open(_dist_file, 'w') as df:
-            df.write('\n'.join(map(lambda dname: dname+' = '+repr(getattr(yamlfig_version, dname)), yamlfig_version.__all__)) + '\n')
+            df.write('\n'.join(map(lambda attr_name: attr_name+' = '+repr(getattr(package_version, attr_name)), package_version.__all__)) + '\n')
 
         return super().run()
 
 
 setup(name='YamlFig',
-      version=yamlfig_version.__version__,
+      version=package_version.version,
       description='Config-building Utilities Using YAML',
       author='Łukasz Dudziak (SAIC-Cambridge, On-Device Team)',
       author_email='l.dudziak@samsung.com',

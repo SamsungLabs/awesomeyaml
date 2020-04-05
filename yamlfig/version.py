@@ -1,7 +1,7 @@
-__version__ = '0.1.0.dev0'
-__repo__ = 'unknown'
-__commit__ = 'unknown'
-__has_repo__ = False
+version = '0.1.0.dev0'
+repo = 'unknown'
+commit = 'unknown'
+has_repo = False
 
 try:
     import git
@@ -9,16 +9,16 @@ try:
 
     try:
         r = git.Repo(Path(__file__).parents[1])
-        __has_repo__ = True
+        has_repo = True
 
         if not r.remotes:
-            __repo__ = 'local'
+            repo = 'local'
         else:
-            __repo__ = r.remotes.origin.url
+            repo = r.remotes.origin.url
 
-        __commit__ = r.head.commit.hexsha
+        commit = r.head.commit.hexsha
         if r.is_dirty():
-            __commit__ += ' (dirty)'
+            commit += ' (dirty)'
     except git.InvalidGitRepositoryError:
         raise ImportError()
 except ImportError:
@@ -26,11 +26,11 @@ except ImportError:
 
 try:
     from . import _dist_info as info
-    assert not __has_repo__, '_dist_info should not exist when repo is in place'
-    assert __version__ == info.__version__
-    __repo__ = info.__repo__
-    __commit__ = info.__commit__
+    assert not has_repo, '_dist_info should not exist when repo is in place'
+    assert version == info.version
+    repo = info.repo
+    commit = info.commit
 except ImportError:
     pass
 
-__all__ = ['__version__', '__repo__', '__commit__', '__has_repo__']
+__all__ = ['version', 'repo', 'commit', 'has_repo']

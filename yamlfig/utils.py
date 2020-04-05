@@ -188,3 +188,52 @@ class Bunch(dict):
             super().__delattr__(name)
         except AttributeError:
             del self[name]
+
+
+class staticproperty(property):
+    def __init__(self, fget=None, fset=None, fdel=None, doc=None):
+        super().__init__(fget, fset, fdel, doc)
+        if doc is None and fget is not None:
+            try:
+                self.__doc__ = fget.__func__.__doc__
+            except AttributeError:
+                self.__doc__ = fget.__doc__
+
+    def __get__(self, inst, cls=None):
+        if self.fget is None:
+            raise AttributeError("unreadable attribute")
+        return self.fget()
+
+    def __set__(self, inst, val):
+        if self.fset is None:
+            raise AttributeError("can't set attribute")
+        return self.fset(val)
+
+    def __delete__(self, inst):
+        if self.fdel is None:
+            raise AttributeError("can't delete attribute")
+        return self.fdel()
+
+
+class LazyModule():
+    def __init__(self, module):
+        self.module = module
+
+    def __getattr__(self, name):
+        return getattr(self.module, name)
+
+
+def add_module_properties(module_name, properties):
+    module = sys.modules[module_name]
+    replace = False
+    if isinstance(module, LazyModule):
+        lazy_type = type(module)
+    else:
+        lazy_type = type('LazyModule({})'.format(module_name), (LazyModule,), {})
+        replace = True
+
+    for name, prop in properties.items():
+        setattr(lazy_type, name, prop)
+
+    if replace:
+        sys.modules[module_name] = lazy_type(module)
