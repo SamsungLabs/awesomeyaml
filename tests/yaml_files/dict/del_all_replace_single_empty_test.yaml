@@ -1,0 +1,9 @@
+---
+a:
+    b: 1
+---
+a: !del
+    b: !!null
+
+###EXPECTED
+a: { b: !!null }

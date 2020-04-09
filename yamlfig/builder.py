@@ -1,6 +1,9 @@
 import os
+import pathlib
 import contextlib
 import collections
+
+from .nodes.node import ConfigNode
 
 
 class Builder():
@@ -122,6 +125,9 @@ class Builder():
         if raw_yaml and not isinstance(source, str):
             raise ValueError('source is expected to be string and contain yaml to be parsed when raw_yaml is set to True')
 
+        if isinstance(source, pathlib.Path):
+            source = str(source)
+
         if isinstance(source, str) and not raw_yaml:
             try:
                 with open(source, 'r') as f:
@@ -138,10 +144,11 @@ class Builder():
             if filename is not None:
                 self._current_file = filename
 
-            from . import yaml
-            for node in yaml.parse(source, self):
-                if node is not None:
-                    self.stages.append(node)
+            with ConfigNode.default_filename(self._current_file):
+                from . import yaml
+                for node in yaml.parse(source, self):
+                    if node is not None:
+                        self.stages.append(node)
         finally:
             self._current_file = None
 

@@ -1,5 +1,5 @@
 from .scalar import ConfigScalar
-from ..namespace import namespace
+from ..namespace import namespace, staticproperty
 from ..utils import import_name
 
 
@@ -8,6 +8,11 @@ class ImportNode(ConfigScalar(str)):
         super().__init__(name, **kwargs)
 
     @namespace('yamlfigns')
-    def on_evaluate(self, path, root):
-        return import_name(self)
+    def on_evaluate(self, path, ctx):
+        return import_name(str(self))
 
+    @namespace('yamlfigns')
+    @staticproperty
+    @staticmethod
+    def tag():
+        return '!import'

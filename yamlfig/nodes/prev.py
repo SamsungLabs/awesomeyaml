@@ -1,5 +1,5 @@
 from .scalar import ConfigScalar
-from ..namespace import namespace
+from ..namespace import namespace, staticproperty
 
 
 class PrevNode(ConfigScalar(str)):
@@ -12,3 +12,9 @@ class PrevNode(ConfigScalar(str)):
         if node is None:
             raise KeyError(f'Node {str(self)!r} does not exist in the previous context (possibly deleted?) - while processing a {type(self).__name__!r} node at {path!r}')
         return node
+
+    @namespace('yamlfigns')
+    @staticproperty
+    @staticmethod
+    def tag():
+        return '!prev'

@@ -1,0 +1,4 @@
+
+class EvalError(RuntimeError):
+    pass
+

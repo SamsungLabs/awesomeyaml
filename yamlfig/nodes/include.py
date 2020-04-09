@@ -1,5 +1,5 @@
 from .node import ConfigNode
-from ..namespace import namespace
+from ..namespace import namespace, staticproperty
 
 import os
 import collections
@@ -43,3 +43,18 @@ class IncludeNode(ConfigNode):
             raise FileNotFoundError({ 'missing': missing, 'lookup_dirs': list(subbuilder.get_lookup_dirs(self.ref_file)) })
 
         return subbuilder.build().yamlfigns.on_preprocess(path, builder)
+
+
+    @namespace('yamlfigns')
+    @staticproperty
+    @staticmethod
+    def tag():
+        return '!include'
+
+    @namespace('yamlfigns')
+    @property
+    def value(self):
+        return {
+            'filenames': self.filenames,
+            'ref_file': self.ref_file
+        }

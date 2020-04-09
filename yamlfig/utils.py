@@ -1,3 +1,4 @@
+import sys
 
 
 class persistent_id(int):
@@ -132,37 +133,45 @@ def pad_with_none(*args, minlen=None):
 
 
 def import_name(symbol_name):
-    module_name, entity_name = pad_with_none(*symbol_name.rsplit('.', maxsplit=1), minlen=2)
-    if not entity_name:
-        if symbol_name.endswith('.'):
-            raise ValueError(f'Invalid target name: {symbol_name}')
-        entity_name = module_name
-        module_name = None
+    if not symbol_name or symbol_name.endswith('.'):
+        raise ValueError(f'Invalid target name: {symbol_name}')
 
-    if module_name is None:
-        if entity_name not in globals():
-            import builtins
-            if entity_name not in dir(builtins):
-                import importlib
+    elements = symbol_name.split('.')
+    current = None
+    try_import = True
+    for element in elements:
+        if try_import:
+            import importlib
+            if current:
                 try:
-                    return importlib.import_module(entity_name)
-                except ImportError as e:
-                    raise ImportError(f'Cannot find an entity named {entity_name!r} in the global variables, the builtin module and cannot import it as a top-level module - error: {str(e)}')
+                    current = importlib.import_module('.' + element, package=current.__name__)
+                    continue
+                except ImportError:
+                    try_import = False
             else:
-                return getattr(builtins, entity_name)
-        else:
-            return globals()[entity_name]
-    else:
-        import importlib
-        module = importlib.import_module(module_name)
-        if entity_name not in dir(module):
-            try:
-                return importlib.import_module(module_name + '.' + entity_name)
-            except ImportError:
-                raise ImportError(f'Cannot find an entity named: {entity_name!r} in module: {module}')
-        return getattr(module, entity_name)
+                try:
+                    current = importlib.import_module(element)
+                    continue
+                except ImportError:
+                    try_import = False
 
-    raise RuntimeError('Unreachable')
+        try:
+            current = getattr(current, element)
+            continue
+        except AttributeError:
+            pass
+
+        if current is None:
+            import builtins
+            try:
+                current = getattr(builtins, element)
+                continue
+            except AttributeError:
+                pass
+
+        raise ImportError(f'Cannot find an entity named: {symbol_name!r}, last found element was: {current}')
+
+    return current
 
 
 class Bunch(dict):
@@ -188,31 +197,6 @@ class Bunch(dict):
             super().__delattr__(name)
         except AttributeError:
             del self[name]
-
-
-class staticproperty(property):
-    def __init__(self, fget=None, fset=None, fdel=None, doc=None):
-        super().__init__(fget, fset, fdel, doc)
-        if doc is None and fget is not None:
-            try:
-                self.__doc__ = fget.__func__.__doc__
-            except AttributeError:
-                self.__doc__ = fget.__doc__
-
-    def __get__(self, inst, cls=None):
-        if self.fget is None:
-            raise AttributeError("unreadable attribute")
-        return self.fget()
-
-    def __set__(self, inst, val):
-        if self.fset is None:
-            raise AttributeError("can't set attribute")
-        return self.fset(val)
-
-    def __delete__(self, inst):
-        if self.fdel is None:
-            raise AttributeError("can't delete attribute")
-        return self.fdel()
 
 
 class LazyModule():

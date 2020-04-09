@@ -5,6 +5,17 @@ from .node import ConfigNode
 from ..namespace import Namespace, staticproperty
 
 
+class NodePath(list):
+    def __str__(self):
+        return ComposedNode.get_str_path(self)
+
+    def __repr__(self):
+        return repr(self.__str__())
+
+    def __add__(self, other):
+        return NodePath(list.__add__(self, other))
+
+
 class ComposedNode(ConfigNode):
     _path_component_regex = re.compile(r'''
                 # the available options are:
@@ -68,13 +79,13 @@ class ComposedNode(ConfigNode):
     @staticmethod
     def get_list_path(*path, check_types=True):
         if not path:
-            return []
+            return NodePath()
         if len(path) == 1:
             if not isinstance(path[0], int):
                 path = path[0]
 
         if path is None:
-            return []
+            return NodePath()
         if not isinstance(path, collections.Sequence) or isinstance(path, str):
             # split_path should only return str and ints so we don't need to check for types
             path = ComposedNode.split_path(str(path))
@@ -84,7 +95,7 @@ class ComposedNode(ConfigNode):
                 if not isinstance(c, str) and (not isinstance(c, int) or isinstance(c, bool)):
                     raise ValueError(f'node path should be a list of ints and/or str only, got {type(c)} at position {i}: {c}')
 
-        return path
+        return NodePath(path)
 
     @staticmethod
     def get_str_path(*path, check_types=True):
@@ -111,11 +122,14 @@ class ComposedNode(ConfigNode):
             kwargs.setdefault('delete', src._delete)
             kwargs.setdefault('merge_mode', src._merge_mode)
             kwargs.setdefault('metadata', src._metadata)
+            kwargs.setdefault('implicit_delete', src._implicit_delete)
 
     def __init__(self, children, _nodes_cache=None, _cache_nodes=True, _force_new=False, _deep_new=False, **kwargs):
         super().__init__(**kwargs)
         kwargs.pop('idx', None)
         kwargs.pop('metadata', None)
+        if kwargs.pop('delete', None):
+            kwargs['implicit_delete'] = True
         _nodes_cache = _nodes_cache if _nodes_cache is not None else {}
         self._children = { name: ConfigNode(child, **kwargs, _nodes_cache=_nodes_cache, _cache_nodes=_cache_nodes, _force_new=_force_new, _deep_new=_deep_new) for name, child in children.items() } # pylint: disable=unexpected-keyword-arg
 
@@ -194,7 +208,7 @@ class ComposedNode(ConfigNode):
             parent, _, _ = nodes[-2]
             return remove_fn(parent, name)
 
-        def get_node(self, *path, intermediate=False, names=False, incomplete=None):
+        def get_node(self, *path, intermediate=False, names=False, incomplete=False):
             ''' Inputs:
                     - `path` either a list of names (str or int) which should be looked up, or a str equivalent to calling ComposedNode.join_path on an analogical list
                     - `intermediate` if True, returned is a list of nodes accessed (including self), in order of accessing, otherwise only the final node is returned (i.e. the last element of the list)
@@ -246,7 +260,7 @@ class ComposedNode(ConfigNode):
             raise NotImplementedError()
 
         def filter_nodes(self, condition, prefix=None):
-            prefix = ComposedNode.get_list_path(prefix, check_types=False) or []
+            prefix = ComposedNode.get_list_path(prefix, check_types=False) or NodePath()
             to_del = []
             to_re_set = []
             for name, child in self.yamlfigns.named_children():
@@ -271,7 +285,7 @@ class ComposedNode(ConfigNode):
             return self
 
         def map_nodes(self, map_fn, prefix=None, cache_results=True, cache=None, leafs_only=True):
-            prefix = ComposedNode.get_list_path(prefix, check_types=False) or []
+            prefix = ComposedNode.get_list_path(prefix, check_types=False) or NodePath()
             to_re_set = []
             if cache_results and cache is None:
                 cache = {}
@@ -307,7 +321,7 @@ class ComposedNode(ConfigNode):
 
         def nodes_with_paths(self, prefix=None, recursive=True, include_self=False, allow_duplicates=True):
             memo = set()
-            prefix = ComposedNode.get_list_path(prefix, check_types=False) or []
+            prefix = ComposedNode.get_list_path(prefix, check_types=False) or NodePath()
             if include_self:
                 memo.add(id(self))
                 yield prefix, self
@@ -376,10 +390,13 @@ class ComposedNode(ConfigNode):
             other.yamlfigns.premerge(self)
             if other.yamlfigns.delete:
                 def maybe_keep(path, node):
-                    if other.yamlfigns.get_node(path):
+                    try:
+                        other.yamlfigns.get_node(path)
+                    except KeyError:
+                        other_node = other.yamlfigns.get_first_not_missing_node(path)
+                        return node.yamlfigns.has_priority_over(other_node)
+                    else:
                         return True
-                    other_node = other.yamlfigns.get_first_not_missing_node(path)
-                    return node.yamlfigns.has_priority_over(other_node)
 
                 self.yamlfigns.filter_nodes(maybe_keep)
 
@@ -403,7 +420,7 @@ class ComposedNode(ConfigNode):
                             self.yamlfigns.set_child(key, possibly_new_child)
                     else:
                         if value.yamlfigns.has_priority_over(child, if_equal=True):
-                            if not value and value.yamlfigns.delete:
+                            if not value and value.yamlfigns.explicit_delete:
                                 self.yamlfigns.remove_child(key)
                             else:
                                 self.yamlfigns.set_child(key, value)

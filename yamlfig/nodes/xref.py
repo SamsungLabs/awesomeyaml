@@ -1,6 +1,6 @@
 from .scalar import ConfigScalar
 from .composed import ComposedNode
-from ..namespace import namespace
+from ..namespace import namespace, staticproperty
 
 
 class XRefNode(ConfigScalar(str)):
@@ -12,12 +12,20 @@ class XRefNode(ConfigScalar(str)):
         chain = [ComposedNode.get_str_path(path)]
         curr = self
         while isinstance(curr, XRefNode):
-            ref = ctx.yamlfigns.get_node(curr)
-            if ref is None:
+            try:
+                ref = ctx.yamlfigns.get_node(curr)
+            except KeyError:
                 msg = f'Referenced node {str(curr)!r} is missing, while following a chain of references: {chain}'
-                raise ValueError(msg)
+                raise ValueError(msg) from None
+
             chain.append(str(curr))
             curr = ref
         assert curr is not self
         return ctx.evaluate_node(curr, prefix=chain[-1])
         #return curr.yamlfigns.on_evaluate(path, ctx)
+
+    @namespace('yamlfigns')
+    @staticproperty
+    @staticmethod
+    def tag():
+        return '!xref'

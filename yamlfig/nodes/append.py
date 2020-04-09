@@ -13,3 +13,9 @@ class AppendNode(ConfigList):
             raise KeyError(f'Node {str(self)!r} does not exist in the previous context (possibly deleted?) - while processing a {type(self).__name__!r} node at {path!r}')
         node.extend(self)
         return node
+
+    @namespace('yamlfigns')
+    @staticproperty
+    @staticmethod
+    def tag():
+        return '!append'

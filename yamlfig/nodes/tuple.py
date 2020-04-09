@@ -12,7 +12,7 @@ class ConfigTuple(ComposedNode, tuple):
 
     def __init__(self, value=None, **kwargs):
         value = value if value is not None else tuple()
-        ComposedNode.maybe_inherit_flags(value, kwargs)
+        #ComposedNode.maybe_inherit_flags(value, kwargs)
         kwargs.setdefault('delete', True)
         ComposedNode.__init__(self, children={ i: v for i, v in enumerate(value) }, **kwargs)
 

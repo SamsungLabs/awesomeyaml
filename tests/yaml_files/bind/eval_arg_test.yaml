@@ -1,0 +1,14 @@
+---
+f: !bind:tests.utils.linear_f
+    a: !eval 2**3
+    b: 1
+
+
+###EXPECTED
+skip
+
+###VALIDATE:
+from tests.utils import linear_f
+self.assertEqual(result.f.func, linear_f)
+self.assertFalse(isinstance(result.f.keywords['a'], str))
+self.assertEqual(result.f(1), 9)

@@ -1,9 +1,11 @@
 from .nodes.dict import ConfigDict
 from .eval_context import EvalContext
+from .namespace import namespace, NamespaceableMeta
 from .utils import Bunch
+from .nodes.required import RequiredNode
 
 
-class Config(Bunch):
+class Config(Bunch, metaclass=NamespaceableMeta):
     ''' A class representing parsed and evaluated config dictionary.
     '''
     def __init__(self, config_dict=None):
@@ -18,6 +20,7 @@ class Config(Bunch):
         config_dict = ConfigDict(config_dict)
         assert not isinstance(_old, ConfigDict) or config_dict is _old
         if config_dict:
+            Config.check_missing(config_dict)
             self._source = config_dict
             pre_evaluate = config_dict.yamlfigns.deepcopy()
             eval_ctx = EvalContext(pre_evaluate)
@@ -40,9 +43,108 @@ class Config(Bunch):
         b.add_multiple_sources(*sources, raw_yaml=raw_yaml, filename=filename)
         return Config(b.build())
 
+    @staticmethod
+    def check_missing(cfg):
+        missing = []
+        for path, node in cfg.yamlfigns.nodes_with_paths():
+            if isinstance(node, RequiredNode):
+                missing.append(repr(path))
+
+        if missing:
+            raise ValueError('The following required nodes have not been set:\n    ' + '\n    '.join(missing))
+
+    @namespace('yamlfigns')
     @property
     def source(self):
         ''' The source `yamlfig.nodes.ConfigDict` which was evaluated to construct
             this `yamlfig.Config`.
         '''
         return self._source
+
+    @namespace('yamlfigns')
+    def pprint(self, ind=2, init_level=0):
+        import io
+        import functools
+
+        ind = ' '*ind
+        ret = '' #ind*init_level
+        stack = [[self, init_level, None]]
+        emitted_recently = False
+        while stack:
+            frame = stack[-1]
+            obj, level, i = frame
+            to_emit = obj
+            finished = False
+            emit = False
+            if i is None:
+                if isinstance(obj, functools.partial):
+                    assert not obj.args
+                    to_emit = obj.func
+                    obj = obj.keywords
+                    frame[0] = obj
+                    emit = True
+
+                if isinstance(obj, str) or isinstance(obj, bytes) or isinstance(obj, io.IOBase):
+                    finished = True
+                    emit = True
+                    if isinstance(obj, str) and '\n' in obj:
+                        str_ind = ind*(level+1)+'    '
+                        line_ind = str_ind + '    '
+                        to_emit = '\n' + str_ind + "''' " + f'\n{line_ind}'.join(obj.rstrip().split('\n')) + '\n' + str_ind + "'''\n"
+                else:
+                    try:
+                        i = iter(obj)
+                    except TypeError:
+                        finished = True
+                        emit = True
+
+                    else:
+                        if not obj:
+                            finished = True
+                            emit = True
+                            i = None
+
+                if not finished:
+                    frame[2] = i
+                    if len(stack) > 1 and isinstance(stack[-2][0], dict): # if a dict contains a collection, add newline after key
+                        if not emit:
+                            ret += '\n'
+                        else: # the same as below, but special case when `not finished and emit`
+                            ret += ' '
+                elif emit:
+                    if len(stack) > 1 and isinstance(stack[-2][0], dict): # if a dict contains an empty collection or scalar value, add space after key
+                        ret += ' '
+
+            if emit:
+                try:
+                    ret += str(to_emit)
+                except ValueError:
+                    ret += repr(to_emit)
+                ret += '\n'
+                emitted_recently = True
+
+            if not finished:
+                try:
+                    child = next(i)
+                except StopIteration:
+                    finished = True
+                else:
+                    if isinstance(obj, dict):
+                        ret += ind*level
+                        ret += str(child)
+                        ret += ':'
+                        child = obj[child]
+                    else:
+                        ret += ind*level
+                        ret += '- '
+
+                    stack.append([child, level+1, None])
+
+            if finished:
+                stack.pop()
+                # we finished a non-empty interable, add extra newline
+                if i is not None and emitted_recently:
+                    ret += '\n'
+                    emitted_recently = False
+
+        return ret

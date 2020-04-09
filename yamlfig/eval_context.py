@@ -1,5 +1,5 @@
 from .nodes.node import ConfigNode
-from .nodes.composed import ComposedNode
+from .nodes.composed import ComposedNode, NodePath
 from .namespace import Namespace, NamespaceableMeta
 
 import copy
@@ -43,12 +43,23 @@ class EvalContext(metaclass=NamespaceableMeta):
                 except:
                     return False
 
-            return ComposedNode.yamlfigns._get_node(self.ecfg, access_fn, query_fn, *path, **kwargs)
+            incomplete = kwargs.get('incomplete', False)
+            kwargs['incomplete'] = False
+            try:
+                return ComposedNode.yamlfigns._get_node(self.ecfg, access_fn, query_fn, *path, **kwargs)
+            except KeyError:
+                kwargs['incomplete'] = incomplete
+                return self.cfg.yamlfigns.get_node(*path, **kwargs)
 
         def remove_node(self, *path):
             def remove_fn(node, component):
-                del node[component]
-            
+                if isinstance(node, ComposedNode):
+                    return node.yamlfigns.remove_child(component)
+                else:
+                    node = node[component]
+                    del node[component]
+                    return node
+
             return ComposedNode.yamlfigns._remove_node(self, remove_fn, *path)
 
         def named_children(self, allow_duplicates=True):
@@ -64,24 +75,22 @@ class EvalContext(metaclass=NamespaceableMeta):
         if not isinstance(cfgobj, ConfigNode):
             return cfgobj
 
-        prefix = ComposedNode.get_list_path(prefix, check_types=False) or []
-        def maybe_evaluate(node, name):
+        prefix = ComposedNode.get_list_path(prefix, check_types=False) or NodePath()
+        def maybe_evaluate(node):
             if id(node) in self._eval_cache:
                 return self._eval_cache[id(node)]
-            path = list(prefix)
-            if name:
-                path.append(name)
-            e = node.yamlfigns.evaluate_node(path, self)
+            e = node.yamlfigns.evaluate_node(prefix, self)
             self._eval_cache[id(node)] = e
             return e
 
-        evaluated_cfgobj = maybe_evaluate(cfgobj, '')
-        if not cfgobj.yamlfigns.is_leaf:
-            for name, child in cfgobj.yamlfigns.named_children():
-                child_path = prefix + [name]
-                evaluated_child = self.evaluate_node(child, prefix=child_path)
-                evaluated_cfgobj[name] = evaluated_child
+        evaluated_parent = None
+        if prefix:
+            evaluated_parent = self.yamlfigns.get_node(prefix[:-1])
+            evaluated_parent[prefix[-1]] = {}
 
+        evaluated_cfgobj = maybe_evaluate(cfgobj)
+        if evaluated_parent is not None:
+            evaluated_parent[prefix[-1]] = evaluated_cfgobj
         return evaluated_cfgobj
 
     def evaluate(self):
@@ -89,8 +98,7 @@ class EvalContext(metaclass=NamespaceableMeta):
                 `yamlfig.utils.Bunch` representing evaluated config node.
         '''
         self._eval_cache.clear()
-        self.ecfg = self.cfg.yamlfigns.evaluate_node([], self)
-        self._eval_cache[id(self.cfg)] = self.ecfg
+        self.ecfg = {}
         return self.evaluate_node(self.cfg)
 
     @staticmethod

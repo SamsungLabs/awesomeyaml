@@ -5,7 +5,8 @@ from . import eval_context
 Config = config.Config
 
 
-from .utils import add_module_properties, staticproperty
+from .utils import add_module_properties
+from .namespace import staticproperty
 
 
 def _get_version():
@@ -26,8 +27,8 @@ def _get_commit():
 
 
 add_module_properties(__name__, {
-    '__version__': staticproperty(_get_version),
-    '__has_repo__': staticproperty(_get_has_repo),
-    '__repo__': staticproperty(_get_repo),
-    '__commit__': staticproperty(_get_commit)
+    '__version__': staticproperty(staticmethod(_get_version)),
+    '__has_repo__': staticproperty(staticmethod(_get_has_repo)),
+    '__repo__': staticproperty(staticmethod(_get_repo)),
+    '__commit__': staticproperty(staticmethod(_get_commit))
 })

@@ -5,10 +5,11 @@ from ..namespace import namespace, staticproperty
 class ConfigList(ComposedNode, list):
     def __init__(self, value=None, **kwargs):
         value = value if value is not None else []
-        ComposedNode.maybe_inherit_flags(value, kwargs)
+        #ComposedNode.maybe_inherit_flags(value, kwargs)
         kwargs.setdefault('delete', True)
         ComposedNode.__init__(self, children={ i: v for i, v in enumerate(value) }, **kwargs)
         list.__init__(self, self._children.values())
+        self._default_delete = True
 
     def _validate_index(self, index, allow_append=False):
         if not isinstance(index, int):
@@ -110,8 +111,8 @@ class ConfigList(ComposedNode, list):
         return super().yamlfigns.merge(other)
 
     @namespace('yamlfigns')
-    def on_evaluate(self, path, root):
-        return list(self)
+    def on_evaluate(self, path, ctx):
+        return list(ctx.evaluate_node(value, path+[key]) for key, value in self.yamlfigns.named_children())
 
     @namespace('yamlfigns')
     @staticproperty

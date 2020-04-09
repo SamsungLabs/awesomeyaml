@@ -6,7 +6,7 @@ from ..utils import Bunch
 class ConfigDict(ComposedNode, dict):
     def __init__(self, value=None, **kwargs):
         value = value if value is not None else {}
-        ComposedNode.maybe_inherit_flags(value, kwargs)
+        #ComposedNode.maybe_inherit_flags(value, kwargs)
         ComposedNode.__init__(self, children=value, **kwargs)
         dict.__init__(self, self._children)
 
@@ -93,8 +93,8 @@ class ConfigDict(ComposedNode, dict):
         return super().yamlfigns.merge(other)
 
     @namespace('yamlfigns')
-    def on_evaluate(self, path, root):
-        return Bunch(self)
+    def on_evaluate(self, path, ctx):
+        return Bunch((key, ctx.evaluate_node(value, path+[key])) for key, value in self.yamlfigns.named_children())
 
     def __repr__(self, simple=False):
         dict_repr = '{' + ', '.join([f'{n!r}: {c.__repr__(simple=True)}' for n, c in self.yamlfigns.named_children()]) + '}' # pylint: disable=no-value-for-parameter

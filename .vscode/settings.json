@@ -32,6 +32,7 @@
         "pylint",
         "remotes",
         "reparse",
+        "representer",
         "rsplit",
         "strify",
         "subcls",
