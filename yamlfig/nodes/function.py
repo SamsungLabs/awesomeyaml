@@ -58,6 +58,9 @@ class FunctionNode(ConfigDict):
     def _get_value(self):
         return (self._func, super()._get_value())
 
+    def _get_native_value(self):
+        return (self._func, super()._get_native_value())
+
     def _set_value(self, value):
         self._func, super_val = value
         return super()._set_value(super_val)

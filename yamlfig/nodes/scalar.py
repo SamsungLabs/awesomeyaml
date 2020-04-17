@@ -80,7 +80,9 @@ class ConfigScalarMeta(ConfigNodeMeta):
 
         if type_only:
             return value_type
-        return ConfigNodeMeta.__call__(value_type, value, **kwargs)
+        ret = ConfigNodeMeta.__call__(value_type, value, **kwargs)
+        ret._dyn_instance = True
+        return ret
 
     def __instancecheck__(cls, obj):
         if cls is ConfigScalar:
@@ -104,8 +106,8 @@ class ConfigScalarMarker(ConfigNode):
 
 
 class ConfigScalar(ConfigScalarMarker, metaclass=ConfigScalarMeta):
-    def __new__(cls, value, **kwargs):
-        return cls._dyn_base.__new__(cls, value) # pylint: disable=no-member
+    def __new__(cls, *value, **kwargs):
+        return cls._dyn_base.__new__(cls, *value) # pylint: disable=no-member
 
     def __init__(self, value, **kwargs):
         ConfigNode.__init__(self, **kwargs)
@@ -116,6 +118,8 @@ class ConfigScalar(ConfigScalarMarker, metaclass=ConfigScalarMeta):
                 self._dyn_base.__init__(self, value)
             except:
                 self._dyn_base.__init__(self) # pylint: disable=no-member
+
+        self._dyn_instance = False
 
     def __repr__(self, simple=False):
         if simple:
@@ -146,7 +150,16 @@ class ConfigScalar(ConfigScalarMarker, metaclass=ConfigScalarMeta):
 
     @namespace('yamlfigns')
     def on_evaluate(self, path, ctx):
+        return self._get_native_value()
+
+    def _get_native_value(self):
         if self._dyn_base in [configbool, ConfigNone]: # pylint: disable=no-member
             return self._get_value()
 
         return self._dyn_base(self) # pylint: disable=no-member
+
+    def __reduce__(self):
+        if not self._dyn_instance:
+            return object.__reduce__(self)
+
+        return ConfigScalar, (self._get_native_value(), ) # pylint: disable=no-member

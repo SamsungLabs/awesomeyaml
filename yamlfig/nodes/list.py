@@ -134,6 +134,9 @@ class ConfigList(ComposedNode, list):
     def _get_value(self):
         return self
 
+    def _get_native_value(self):
+        return list(self)
+
     def _set_value(self, other):
         self.clear()
         for index, child in enumerate(other):

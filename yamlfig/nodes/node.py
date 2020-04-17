@@ -275,3 +275,6 @@ class ConfigNode(metaclass=ConfigNodeMeta):
                 mapping, sequence or scalar).
             '''
             return self.yamlfigns.tag, self.yamlfigns.get_node_info(), self.yamlfigns.value
+
+    def __reduce__(self):
+        return self.__class__, (self._get_native_value(), )

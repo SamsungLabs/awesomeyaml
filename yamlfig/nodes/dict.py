@@ -114,6 +114,9 @@ class ConfigDict(ComposedNode, dict):
     def _get_value(self):
         return self
 
+    def _get_native_value(self):
+        return dict(self)
+
     def _set_value(self, other):
         self.clear()
         for name, child in other.items():
