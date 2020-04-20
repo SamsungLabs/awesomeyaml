@@ -271,6 +271,8 @@ def _node_representer(dumper, node):
         else:
             del metadata[f]
 
+    metadata = { key: value for key, value in metadata.items() if key not in dumper.exclude_metadata }
+
     if metadata:
         if tag is None:
             tag = '!metadata'
@@ -407,7 +409,7 @@ def parse(data, builder):
         yield ConfigNode(raw)
 
 
-def dump(output, nodes, open_mode='w'):
+def dump(output, nodes, open_mode='w', exclude_metadata=None):
     close = False
     if isinstance(output, str):
         output = open(output, open_mode)
@@ -417,6 +419,7 @@ def dump(output, nodes, open_mode='w'):
         dumper = yaml.Dumper(*args, **kwargs)
         assert not hasattr(dumper, 'metadata')
         dumper.metadata = []
+        dumper.exclude_metadata = exclude_metadata or set()
         return dumper
 
     try:
