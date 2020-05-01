@@ -1,6 +1,7 @@
 from .nodes.node import ConfigNode
 from .nodes.composed import ComposedNode, NodePath
 from .namespace import Namespace, NamespaceableMeta
+from .utils import Bunch
 
 import copy
 
@@ -12,6 +13,38 @@ class EvalContext(metaclass=NamespaceableMeta):
         The primary use-case for this class and the resulting `Bunch` object is to construct a `yamlfig.Config` object
         which basically combines the returned `Bunch` object with the original `ConfigDict`.
     '''
+
+    class PartialChild(Bunch):
+        def __init__(self, path, eval_ctx):
+            self._path = path
+            self._eval_ctx = eval_ctx
+            super().__init__({})
+
+        def __getitem__(self, key):
+            if key not in self:
+                return self._eval_ctx.cfg.yamlfigns.get_node(self._path + [key])
+
+            return super().__getitem__(key)
+
+        def __getattr__(self, name):
+            #if name not in self:
+            #    raise AttributeError(f'Object {type(self).__name__!r} does not have attribute {name!r}')
+            return self[name]
+
+        def __setattr__(self, name, value):
+            if name.startswith('_'):
+                return super().__setattr__(name, value)
+
+            if name in self.__dict__:
+                raise ValueError('Name conflict!')
+
+            self[name] = value
+
+        def __delattr__(self, name):
+            try:
+                super().__delattr__(name)
+            except AttributeError:
+                del self[name]
 
     _default_eval_symbols = {}
 
@@ -86,7 +119,7 @@ class EvalContext(metaclass=NamespaceableMeta):
         evaluated_parent = None
         if prefix:
             evaluated_parent = self.yamlfigns.get_node(prefix[:-1])
-            evaluated_parent[prefix[-1]] = {}
+            evaluated_parent[prefix[-1]] = EvalContext.PartialChild(prefix, self)
 
         evaluated_cfgobj = maybe_evaluate(cfgobj)
         if evaluated_parent is not None:
