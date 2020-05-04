@@ -89,7 +89,7 @@ def _make_node(loader, node, node_type=ConfigNode, kwargs=None, data_arg_name=No
     elif isinstance(node, yaml.SequenceNode):
         data = loader.construct_sequence(node, deep=True)
     elif isinstance(node, yaml.ScalarNode):
-        data = _maybe_parse_scalar(loader, node, reparse=False)
+        data = _maybe_parse_scalar(loader, node, reparse=node_type is ConfigNode)
 
     kwargs.setdefault('source_file', loader.context.get_current_file())
 

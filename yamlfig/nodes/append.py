@@ -1,9 +1,13 @@
 from .list import ConfigList
 from ..namespace import namespace, staticproperty
 
+from collections import Sequence
+
 
 class AppendNode(ConfigList):
     def __init__(self, value, **kwargs):
+        if not isinstance(value, Sequence) or isinstance(value, str) or isinstance(value, bytes):
+            value = [value]
         super().__init__(value, **kwargs)
 
     @namespace('yamlfigns')
