@@ -103,6 +103,9 @@ class EvalContext(metaclass=NamespaceableMeta):
                         continue
                     memo.add(id(child))
                 yield name, child
+            for name, child in self.cfg.yamlfigns.named_children():
+                if name not in self.ecfg:
+                    yield name, child
 
     def evaluate_node(self, cfgobj, prefix=None):
         if not isinstance(cfgobj, ConfigNode):

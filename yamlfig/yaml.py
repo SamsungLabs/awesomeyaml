@@ -308,7 +308,7 @@ def _node_representer(dumper, node):
                 if data is None:
                     assert tag.startswith('!null')
                     return dumper.represent_scalar(tag, str(''))
-                return dumper.represent_scalar(tag, data)
+                return dumper.represent_scalar(tag, str(data))
             else:
                 from .nodes.scalar import ConfigScalar
                 if isinstance(data, ConfigScalar):
