@@ -192,7 +192,7 @@ def _fstr_node_constructor(loader, node):
         try:
             return FStrNode(value, *args, **kwargs)
         except ValueError:
-            return FStrNode("f'" + value + "'", *args, **kwargs)
+            return FStrNode("f'" + value.replace(r"'", r"\'") + "'", *args, **kwargs)
 
     return _make_node(loader, node, node_type=_maybe_fix_fstr)
 
