@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from setuptools import setup, find_packages
-from setuptools.command.install import install
+from setuptools.command.build_py import build_py
 
 import importlib.util
 from pathlib import Path
@@ -13,14 +13,11 @@ spec = importlib.util.spec_from_file_location('{}.version'.format(package_name),
 package_version = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(package_version)
 
-class build_maybe_inplace(install):
+class build_maybe_inplace(build_py):
     def run(self):
         _dist_file = version_file.parent.joinpath('_dist_info.py')
         assert not _dist_file.exists()
-        #if not _dist_file.exists():
-        with open(_dist_file, 'w') as df:
-            df.write('\n'.join(map(lambda attr_name: attr_name+' = '+repr(getattr(package_version, attr_name)), package_version.__all__)) + '\n')
-
+        _dist_file.write_text('\n'.join(map(lambda attr_name: attr_name+' = '+repr(getattr(package_version, attr_name)), package_version.__all__)) + '\n')
         return super().run()
 
 
@@ -38,6 +35,6 @@ setup(name='YamlFig',
       packages=find_packages(where='.', exclude=['tests']),
       package_dir={ '': '.' },
       cmdclass={
-          'install': build_maybe_inplace
+          'build_py': build_maybe_inplace
       }
 )
