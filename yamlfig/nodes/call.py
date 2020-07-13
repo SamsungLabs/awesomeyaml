@@ -10,7 +10,8 @@ class CallNode(FunctionNode):
         if isinstance(self._func, str):
             self._func = import_name(self._func)
         args = ConfigDict.yamlfigns.on_evaluate(self, path, ctx)
-        return self._func(**args)
+        p, kw_p, kw = FunctionNode._resolve_args(self._func, args)
+        return self._func(*p, **kw_p, **kw)
 
     @namespace('yamlfigns')
     @property

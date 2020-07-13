@@ -17,6 +17,12 @@ class FunctionNode(ConfigDict):
         else:
             self._func = func
 
+        if not isinstance(args, dict):
+            if isinstance(args, list):
+                args = { idx: val for idx, val in enumerate(args) }
+            else:
+                args = { 0: args }
+
         if not kwargs.get('delete', None):
             kwargs.setdefault('delete', True)
         super().__init__(args, **kwargs)
@@ -75,3 +81,37 @@ class FunctionNode(ConfigDict):
     @property
     def tag(self):
         raise NotImplementedError()
+
+    @staticmethod
+    def _resolve_args(func, args):
+        positional_args = { key: value for key, value in args.items() if isinstance(key, int) }
+        if not positional_args:
+            return [], {}, args
+
+        keyword_args = { key: value for key, value in args.items() if isinstance(key, str) }
+        assert len(positional_args) + len(keyword_args) == len(args)
+
+        import inspect
+        sig = inspect.signature(func)
+        params = list(sig.parameters.values())
+        idx_to_name = []
+        for p in params:
+            if p.kind == inspect.Parameter.VAR_POSITIONAL:
+                break
+            idx_to_name.append(p.name)
+
+        idx = 0
+        unpack = []
+        while True:
+            if idx not in positional_args:
+                break
+            unpack.append(positional_args.pop(idx))
+            idx += 1
+
+        kw_positional_args = {}
+        for idx, value in positional_args.items():
+            if idx >= len(idx_to_name):
+                raise ValueError(f'Cannot resolve argument at position {idx} for function: {func} with signature {sig}')
+            kw_positional_args[idx_to_name[idx]] = value
+
+        return unpack, kw_positional_args, keyword_args
