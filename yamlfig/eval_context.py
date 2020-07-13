@@ -60,6 +60,7 @@ class EvalContext(metaclass=NamespaceableMeta):
         self.cfg = config_dict
         self._removed_nodes = {}
         self._eval_cache = {}
+        self._eval_paths = set()
         self._done = False
         self._eval_symbols = copy.copy(EvalContext._default_eval_symbols)
         if eval_symbols:
@@ -112,6 +113,10 @@ class EvalContext(metaclass=NamespaceableMeta):
             return cfgobj
 
         prefix = ComposedNode.get_list_path(prefix, check_types=False) or NodePath()
+        if str(prefix) in self._eval_paths:
+            assert id(cfgobj) in self._eval_cache
+            return self._eval_cache[id(cfgobj)]
+
         def maybe_evaluate(node):
             if id(node) in self._eval_cache:
                 return self._eval_cache[id(node)]
@@ -127,6 +132,8 @@ class EvalContext(metaclass=NamespaceableMeta):
         evaluated_cfgobj = maybe_evaluate(cfgobj)
         if evaluated_parent is not None:
             evaluated_parent[prefix[-1]] = evaluated_cfgobj
+
+        self._eval_paths.add(str(prefix))
         return evaluated_cfgobj
 
     def evaluate(self):
@@ -134,6 +141,7 @@ class EvalContext(metaclass=NamespaceableMeta):
                 `yamlfig.utils.Bunch` representing evaluated config node.
         '''
         self._eval_cache.clear()
+        self._eval_paths.clear()
         self.ecfg = {}
         return self.evaluate_node(self.cfg)
 
