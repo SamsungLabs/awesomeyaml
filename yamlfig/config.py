@@ -43,6 +43,49 @@ class Config(Bunch, metaclass=NamespaceableMeta):
         b.add_multiple_sources(*sources, raw_yaml=raw_yaml, filename=filename)
         return Config(b.build())
 
+    @classmethod
+    def process_cmdline(cls, args, filename_lookup_fn=None):
+        yamls = []
+        filenames = []
+        raw_yamls = []
+
+        def append(idx, option):
+            if '=' in option:
+                key, value = option.split('=', maxsplit=1)
+                yaml = ''
+                ind = 0
+                for part in key.split('.'):
+                    if ind:
+                        yaml += '\n'
+                        yaml += '    ' * ind
+
+                    yaml += part + ': '
+                    ind += 1
+
+                yaml += value
+                filename = f'<Commandline argument #{idx}>'
+                raw_yaml = True
+            else:
+                yaml = option
+                if filename_lookup_fn is not None:
+                    yaml = filename_lookup_fn(yaml)
+                filename = yaml
+                raw_yaml = False
+
+            yamls.append(yaml)
+            filenames.append(filename)
+            raw_yamls.append(raw_yaml)
+
+        for i, src in enumerate(args):
+            append(i, src)
+
+        return yamls, filenames, raw_yamls
+
+    @classmethod
+    def build_from_cmdline(cls, *sources, filename_lookup_fn=None):
+        yamls, filenames, raw_yamls = cls.process_cmdline(sources, filename_lookup_fn=filename_lookup_fn)
+        return cls.build(*yamls, raw_yaml=raw_yamls, filename=filenames)
+
     @staticmethod
     def check_missing(cfg):
         missing = []
