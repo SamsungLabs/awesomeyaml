@@ -17,8 +17,8 @@ class FunctionNode(ConfigDict):
         else:
             self._func = func
 
-        if not isinstance(args, dict):
-            if isinstance(args, list):
+        if args is not None and not isinstance(args, dict):
+            if isinstance(args, list) or isinstance(args, tuple):
                 args = { idx: val for idx, val in enumerate(args) }
             else:
                 args = { 0: args }
