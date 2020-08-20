@@ -1,0 +1,8 @@
+test: !path:cwd testtest
+
+
+###EXPECTED
+skip
+
+###VALIDATE
+self.assertEqual(result.test, Path(os.getcwd()).joinpath('testtest'))

@@ -1,0 +1,8 @@
+test: !path:parent(2) [foo, bar]
+
+
+###EXPECTED
+skip
+
+###VALIDATE
+self.assertEqual(result.test, Path(__file__).parent.joinpath('foo', 'bar'))

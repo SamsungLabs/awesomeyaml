@@ -225,6 +225,21 @@ def _none_constructor(loader, node):
     return _make_node(loader, node, node_type=_check_empty_str)
 
 
+def _simple_path_constructor(loader, node):
+    from .nodes.path import PathNode
+    return _make_node(loader, node, node_type=PathNode, kwargs={ 'ref_point': None, 'src_filename': loader.context.get_current_file() })
+
+
+def _path_constructor(loader, tag_suffix, node):
+    from .nodes.path import PathNode
+    if tag_suffix.count(':') > 1:
+        raise ValueError(f'Invalid path tag: !path:{tag_suffix}')
+
+    ref_point, metadata = pad_with_none(*tag_suffix.rsplit(':', maxsplit=1), minlen=2)
+    metadata = _decode_metadata(metadata)
+    return _make_node(loader, node, node_type=PathNode, kwargs={ 'ref_point': ref_point, 'src_filename': loader.context.get_current_file(), 'metadata': metadata }, dict_is_data=False)
+
+
 def make_call_node_with_fixed_func(loader, node, func):
     from .nodes.call import CallNode
     return _make_node(loader, node, node_type=CallNode, kwargs={ 'func': func }, data_arg_name='args')
@@ -249,6 +264,8 @@ yaml.add_implicit_resolver('!fstr', _fstr_regex)
 yaml.add_constructor('!import', _import_constructor)
 yaml.add_constructor('!required', _required_constructor)
 yaml.add_constructor('!null', _none_constructor)
+yaml.add_multi_constructor('!path:', _path_constructor)
+yaml.add_constructor('!path', _simple_path_constructor)
 
 
 def _node_representer(dumper, node):

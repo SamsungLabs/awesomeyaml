@@ -1,0 +1,8 @@
+test: !path:parent [ !eval "'placki'" ]
+
+
+###EXPECTED
+skip
+
+###VALIDATE
+self.assertEqual(result.test, Path(__file__).parent.joinpath('yaml_files', 'path', 'placki'))

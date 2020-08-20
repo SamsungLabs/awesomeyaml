@@ -1,0 +1,8 @@
+test: !path:parent(1)
+
+
+###EXPECTED
+skip
+
+###VALIDATE
+self.assertEqual(result.test, Path(__file__).parent.joinpath('yaml_files'))
