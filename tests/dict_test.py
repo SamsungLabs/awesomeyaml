@@ -1,3 +1,4 @@
+import copy
 import unittest
 
 from .utils import setUpModule
@@ -149,20 +150,28 @@ class DictNodeTest(unittest.TestCase):
     def test_copy(self):
         from yamlfig.nodes.dict import ConfigDict
         test = ConfigDict({ 'a': 1, 'b': 2, 'c': { 'd': 3, 'e': 4 } })
-        c = test.yamlfigns.copy()
+        c = copy.copy(test)
         self.assertIsNot(test, c)
+        self.assertEqual(test, c)
+        self.assertEqual(test.yamlfigns.node_info, c.yamlfigns.node_info)
         for path, node in test.yamlfigns.nodes_with_paths(include_self=False):
             node2 = c.yamlfigns.get_node(path)
             self.assertIs(node, node2)
+            self.assertEqual(node, node2)
+            self.assertEqual(node.yamlfigns.node_info, node2.yamlfigns.node_info)
 
     def test_deepcopy(self):
         from yamlfig.nodes.dict import ConfigDict
         test = ConfigDict({ 'a': 1, 'b': 2, 'c': { 'd': 3, 'e': 4 } })
-        c = test.yamlfigns.deepcopy()
+        c = copy.deepcopy(test)
         self.assertIsNot(test, c)
+        self.assertEqual(test, c)
+        self.assertEqual(test.yamlfigns.node_info, c.yamlfigns.node_info)
         for path, node in test.yamlfigns.nodes_with_paths(include_self=False):
             node2 = c.yamlfigns.get_node(path)
             self.assertIsNot(node, node2)
+            self.assertEqual(node, node2)
+            self.assertEqual(node.yamlfigns.node_info, node2.yamlfigns.node_info)
 
 if __name__ == '__main__':
     unittest.main()

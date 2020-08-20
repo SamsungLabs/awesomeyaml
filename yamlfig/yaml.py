@@ -18,6 +18,8 @@ def _encode_metadata(metadata):
 
 
 def _decode_metadata(encoded):
+    if not encoded:
+        return None
     return pickle.loads(bytes.fromhex(encoded))
 
 
@@ -142,50 +144,52 @@ def _include_constructor(loader, node):
     return _make_node(loader, node, node_type=IncludeNode, kwargs={ 'ref_file': loader.context.get_current_file() }, dict_is_data=False)
 
 
-def _prev_node_constructor(loader, node):
+def _prev_constructor(loader, node):
     from .nodes.prev import PrevNode
     return _make_node(loader, node, node_type=PrevNode)
 
 
-def _xref_node_constructor(loader, node):
+def _xref_constructor(loader, node):
     from .nodes.xref import XRefNode
     return _make_node(loader, node, node_type=XRefNode)
 
 
-def _simple_bind_node_constructor(loader, node):
+def _simple_bind_constructor(loader, node):
     from .nodes.bind import BindNode
     return _make_node(loader, node, node_type=BindNode, data_arg_name='func')
 
 
-def _bind_node_constructor(loader, tag_suffix, node):
+def _bind_constructor(loader, tag_suffix, node):
     from .nodes.bind import BindNode
     if tag_suffix.count(':') > 1:
         raise ValueError(f'Invalid bind tag: !bind:{tag_suffix}')
 
     target_f_name, metadata = pad_with_none(*tag_suffix.split(':', maxsplit=1), minlen=2)
+    metadata = _decode_metadata(metadata)
     return _make_node(loader, node, node_type=BindNode, kwargs={ 'func': target_f_name, 'metadata': metadata }, data_arg_name='args')
 
 
-def _simple_call_node_constructor(loader, node):
+def _simple_call_constructor(loader, node):
     from .nodes.call import CallNode
     return _make_node(loader, node, node_type=CallNode, data_arg_name='func')
 
 
-def _call_node_constructor(loader, tag_suffix, node):
+def _call_constructor(loader, tag_suffix, node):
     from .nodes.call import CallNode
     if tag_suffix.count(':') > 1:
         raise ValueError(f'Invalid call tag: !call:{tag_suffix}')
 
     target_f_name, metadata = pad_with_none(*tag_suffix.split(':', maxsplit=1), minlen=2)
+    metadata = _decode_metadata(metadata)
     return _make_node(loader, node, node_type=CallNode, kwargs={ 'func': target_f_name, 'metadata': metadata }, data_arg_name='args')
 
 
-def _eval_node_constructor(loader, node):
+def _eval_constructor(loader, node):
     from .nodes.eval import EvalNode
     return _make_node(loader, node, node_type=EvalNode)
 
 
-def _fstr_node_constructor(loader, node):
+def _fstr_constructor(loader, node):
     from .nodes.fstr import FStrNode
 
     def _maybe_fix_fstr(value, *args, **kwargs):
@@ -197,14 +201,14 @@ def _fstr_node_constructor(loader, node):
     return _make_node(loader, node, node_type=_maybe_fix_fstr)
 
 
-def _import_node_constructor(loader, node):
+def _import_constructor(loader, node):
     import importlib
     module = importlib.import_module('.nodes.import', package='yamlfig') # dirty hack because "import" is a keyword
     ImportNode = module.ImportNode
     return _make_node(loader, node, node_type=ImportNode)
 
 
-def _required_node_constructor(loader, node):
+def _required_constructor(loader, node):
     from .nodes.required import RequiredNode
     def _check_empty_str(arg, **kwargs):
         if arg != '':
@@ -233,17 +237,17 @@ yaml.add_constructor('!merge', _merge_constructor)
 yaml.add_constructor('!append', _append_constructor)
 yaml.add_multi_constructor('!metadata:', _metadata_constructor)
 yaml.add_constructor('!include', _include_constructor)
-yaml.add_constructor('!prev', _prev_node_constructor)
-yaml.add_constructor('!xref', _xref_node_constructor)
-yaml.add_multi_constructor('!bind:', _bind_node_constructor) # full bind form: !bind:func_name[:metadata] args_dict
-yaml.add_constructor('!bind', _simple_bind_node_constructor) # simple argumentless bind from string: !bind func_name
-yaml.add_multi_constructor('!call:', _call_node_constructor) # full call form: !call:func_name[:metadata] args_dict
-yaml.add_constructor('!call', _simple_call_node_constructor) # simple argumentless call from string: !call func_name
-yaml.add_constructor('!eval', _eval_node_constructor)
-yaml.add_constructor('!fstr', _fstr_node_constructor)
+yaml.add_constructor('!prev', _prev_constructor)
+yaml.add_constructor('!xref', _xref_constructor)
+yaml.add_multi_constructor('!bind:', _bind_constructor) # full bind form: !bind:func_name[:metadata] args_dict
+yaml.add_constructor('!bind', _simple_bind_constructor) # simple argumentless bind from string: !bind func_name
+yaml.add_multi_constructor('!call:', _call_constructor) # full call form: !call:func_name[:metadata] args_dict
+yaml.add_constructor('!call', _simple_call_constructor) # simple argumentless call from string: !call func_name
+yaml.add_constructor('!eval', _eval_constructor)
+yaml.add_constructor('!fstr', _fstr_constructor)
 yaml.add_implicit_resolver('!fstr', _fstr_regex)
-yaml.add_constructor('!import', _import_node_constructor)
-yaml.add_constructor('!required', _required_node_constructor)
+yaml.add_constructor('!import', _import_constructor)
+yaml.add_constructor('!required', _required_constructor)
 yaml.add_constructor('!null', _none_constructor)
 
 
@@ -257,7 +261,20 @@ def _node_representer(dumper, node):
     parent_metadata = dumper.metadata[-1] if dumper.metadata else {}
     type_defaults = node.yamlfigns.get_default_mode()
 
-    to_infer = ['merge_mode', 'delete']
+    tags_to_infer = {
+        'merge_mode': {
+            ConfigNode.STANDARD: '',
+            ConfigNode.WEAK: '!weak',
+            ConfigNode.FORCE: '!force'
+        },
+        'delete': {
+            True: '!del',
+            False: '!merge'
+        }
+    }
+
+    to_infer = list(tags_to_infer.keys())
+
     for f in to_infer:
         if f not in metadata:
             continue
@@ -273,9 +290,26 @@ def _node_representer(dumper, node):
 
     metadata = { key: value for key, value in metadata.items() if key not in dumper.exclude_metadata }
 
+    # try to use simple standard tag rather then encoded metadata
+    # this is possible if we only have one special thing to handle
+    # (e.g. delete is set to True)
+    # if more then one things are changed for a particular node, we need
+    # to se !metadata:hash anyway since it's impossible to have more
+    # then two tags at the same time
+    if not tag and len(metadata) == 1:
+        # check if the only element in metadata is one of the standard
+        # things which can be controller with simple tags (those listed
+        # in "tags_to_infer")
+        key = next(iter(metadata.keys()))
+        maybe_tag = tags_to_infer.get(key)
+        if maybe_tag:
+            tag = maybe_tag[metadata[key]]
+            del metadata[key]
+
     if metadata:
         if tag is None:
             tag = '!metadata'
+
         tag += ':' + _encode_metadata(metadata)
 
     pop = False

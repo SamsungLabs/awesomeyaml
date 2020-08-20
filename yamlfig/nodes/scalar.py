@@ -163,3 +163,8 @@ class ConfigScalar(ConfigScalarMarker, metaclass=ConfigScalarMeta):
             return object.__reduce__(self)
 
         return ConfigScalar, (self._get_native_value(), ) # pylint: disable=no-member
+
+    def __eq__(self, other):
+        if isinstance(other, ConfigScalar):
+            other = other._get_native_value()
+        return self._get_native_value() == other

@@ -7,16 +7,17 @@ from ..utils import import_name
 class CallNode(FunctionNode):
     @namespace('yamlfigns')
     def on_evaluate(self, path, ctx):
-        if isinstance(self._func, str):
-            self._func = import_name(self._func)
+        _func = self._func
+        if isinstance(_func, str):
+            _func = import_name(_func)
         args = ConfigDict.yamlfigns.on_evaluate(self, path, ctx)
-        p, kw_p, kw = FunctionNode._resolve_args(self._func, args)
-        return self._func(*p, **kw_p, **kw)
+        p, kw_p, kw = FunctionNode._resolve_args(_func, args)
+        return _func(*p, **kw_p, **kw)
 
     @namespace('yamlfigns')
     @property
     def tag(self):
-        f = self._func
-        if not isinstance(f, str):
-            f = self._func.__module__ + '.' + self._func.__name__
-        return '!call:' + f
+        _func = self._func
+        if not isinstance(_func, str):
+            _func = self._func.__module__ + '.' + self._func.__name__
+        return '!call:' + _func

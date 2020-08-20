@@ -10,12 +10,8 @@ from ..utils import persistent_id
 class ConfigNodeMeta(NamespaceableMeta):
     def __call__(cls,
             *args,
+            nodes_memo=None,
             _force_type=False,
-            _nodes_cache=None,
-            _cache_nodes=True,
-            _force_new=False,
-            _deep_new=False,
-            _copy_guard=False,
             **kwargs):
         value = None
         has_value = False
@@ -24,78 +20,57 @@ class ConfigNodeMeta(NamespaceableMeta):
             args = args[1:]
             has_value = True
 
-        if has_value and _cache_nodes and _nodes_cache is not None and id(value) in _nodes_cache:
-            return _nodes_cache[id(value)]
-        
-        t = cls
-        if isinstance(value, ConfigNode) and not _copy_guard:
-            assert has_value
-            if not _force_new:
-                value._merge_mode = kwargs.get('merge_mode', value._merge_mode)
-                value._delete = kwargs.get('merge_mode', value._delete)
-                value._implicit_delete = kwargs.get('implicit_delete', value._implicit_delete)
-                return value
-
-            kwargs = dict(kwargs)
-            kwargs['idx'] = value._idx
-            kwargs['merge_mode'] = value._merge_mode
-            kwargs['delete'] = value._delete
-            kwargs['metadata'] = copy.deepcopy(value._metadata)
-            kwargs['source_file'] = value._source_file
-            kwargs['implicit_delete'] = value._implicit_delete
-
-            # kwargs.setdefault('idx', value._idx)
-            # kwargs.setdefault('merge_mode', value._merge_mode)
-            # kwargs.setdefault('delete', value._delete)
-            # kwargs.setdefault('metadata', copy.deepcopy(value._metadata))
-            # kwargs.setdefault('source_file', value._source_file)
-            # kwargs.setdefault('implicit_delete', value._implicit_delete)
-
-            t = type(value)
-            value = value.yamlfigns.value
-            return t(value, *args, _force_type=True, _nodes_cache=_nodes_cache, _cache_nodes=True, _force_new=_deep_new, _deep_new=_deep_new, _copy_guard=True, **kwargs)
-
+        # check if type deduction is required
         if cls is ConfigNode and not _force_type:
             # deduce type and call it recursively (this time enforcing it)
             if not has_value:
                 raise ValueError('Cannot deduce target type without a positional argument - deduction is always done w.r.t. the first argument')
-            from .dict import ConfigDict
-            from .list import ConfigList
-            from .tuple import ConfigTuple
-            from .scalar import ConfigScalar
-
-            if isinstance(value, collections.Sequence) and not isinstance(value, str) and not isinstance(value, bytes):
-                if isinstance(value, collections.MutableSequence):
-                    t = ConfigList
-                else:
-                    t = ConfigTuple
-            elif isinstance(value, collections.MutableMapping):
-                t = ConfigDict
+            if isinstance(value, ConfigNode):
+                return value
             else:
-                t = ConfigScalar
+                from .dict import ConfigDict
+                from .list import ConfigList
+                from .tuple import ConfigTuple
+                from .scalar import ConfigScalar
 
-            return t(value, *args, _force_type=True, _nodes_cache=_nodes_cache, _cache_nodes=True, _force_new=_force_new, _deep_new=_deep_new, **kwargs)
-        
+                if isinstance(value, collections.Sequence) and not isinstance(value, str) and not isinstance(value, bytes):
+                    if isinstance(value, collections.MutableSequence):
+                        t = ConfigList
+                    else:
+                        t = ConfigTuple
+                elif isinstance(value, collections.MutableMapping):
+                    t = ConfigDict
+                else:
+                    t = ConfigScalar
+
+            # dispatch actual object creation (see below)
+            # we need to do that recursively since __call__ method can be overwritten (e.g. ConfigScalar)
+            return t(value, *args, nodes_memo=nodes_memo, _force_type=True, **kwargs)
+
+        # actual object creation
+        if has_value and nodes_memo is not None and id(value) in nodes_memo:
+            return nodes_memo[id(value)]
+
         from .composed import ComposedNode
         if issubclass(cls, ComposedNode):
-            kwargs['_nodes_cache'] = _nodes_cache
-            kwargs['_cache_nodes'] = _cache_nodes
-            kwargs['_force_new'] = _force_new
-            kwargs['_deep_new'] = _deep_new
+            kwargs['nodes_memo'] = nodes_memo
 
         if has_value:
-            ret = super().__call__(value, *args, **kwargs)
+            ret = NamespaceableMeta.__call__(cls, value, *args, **kwargs)
         else:
-            ret = super().__call__(*args, **kwargs)
+            assert not args
+            ret = NamespaceableMeta.__call__(cls, **kwargs)
 
-        if has_value and _cache_nodes and _nodes_cache is not None:
-            _nodes_cache[persistent_id(value)] = ret
- 
+        if has_value and nodes_memo is not None:
+            assert id(value) not in nodes_memo
+            nodes_memo[persistent_id(value)] = ret
+
         return ret
 
 
 class ConfigNode(metaclass=ConfigNodeMeta):
     WEAK = -1
+    STANDARD = 0
     FORCE = 1
 
     special_metadata_names = [
@@ -132,7 +107,7 @@ class ConfigNode(metaclass=ConfigNodeMeta):
         self._source_file = source_file if source_file is not None else getattr(ConfigNode._default_filename, 'value', None)
         self._metadata = metadata or {}
 
-        self._default_merge_mode = 0
+        self._default_merge_mode = ConfigNode.STANDARD
         self._default_delete = False
 
     def __repr__(self, simple=False):
@@ -233,23 +208,7 @@ class ConfigNode(metaclass=ConfigNodeMeta):
         def on_evaluate(self, path, ctx):
             return self.yamlfigns.value
 
-        def copy(self):
-            return ConfigNode(self, _force_new=True, _deep_new=False)#, # pylint: disable=unexpected-keyword-arg,redundant-keyword-arg
-                #idx=self._idx,
-                #merge_mode=self._merge_mode,
-                #delete=self._delete,
-                #metadata=self._metadata,
-                #source_file=self._source_file) 
-
-        def deepcopy(self):
-            return ConfigNode(self, _force_new=True, _deep_new=True) #, # pylint: disable=unexpected-keyword-arg,redundant-keyword-arg
-                #idx=self._idx,
-                #merge_mode=self._merge_mode,
-                #delete=self._delete,
-                #metadata=self._metadata,
-                #source_file=self._source_file)
-
-        def get_node_info(self):
+        def get_node_info_to_save(self):
             ''' This function should return a dict with values which one wants to preserve when dumping the node.
             '''
             # by default we don't care about node idx or source file (after dumping this will change anyway)
@@ -261,6 +220,17 @@ class ConfigNode(metaclass=ConfigNodeMeta):
             ret['merge_mode'] = self._merge_mode
             ret['delete'] = self._delete #if not self._implicit_delete else None
             return ret
+
+        @property
+        def node_info(self):
+            return {
+                'idx': self._idx,
+                'merge_mode': self._merge_mode,
+                'delete': self._delete,
+                'implicit_delete': self._implicit_delete,
+                'source_file': self._source_file,
+                'metadata': self._metadata
+            }
 
         def get_default_mode(self):
             return {
@@ -274,7 +244,4 @@ class ConfigNode(metaclass=ConfigNodeMeta):
                 and ``data`` is object which will be used to recursively represent ``self`` (can be either
                 mapping, sequence or scalar).
             '''
-            return self.yamlfigns.tag, self.yamlfigns.get_node_info(), self.yamlfigns.value
-
-    def __reduce__(self):
-        return self.__class__, (self._get_native_value(), )
+            return self.yamlfigns.tag, self.yamlfigns.get_node_info_to_save(), self.yamlfigns.value

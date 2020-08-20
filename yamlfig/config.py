@@ -1,3 +1,5 @@
+import copy
+
 from .nodes.dict import ConfigDict
 from .eval_context import EvalContext
 from .namespace import namespace, NamespaceableMeta
@@ -16,13 +18,13 @@ class Config(Bunch, metaclass=NamespaceableMeta):
         if config_dict is not None and not isinstance(config_dict, dict):
             raise ValueError('dict or None expected')
 
-        _old = config_dict
-        config_dict = ConfigDict(config_dict)
-        assert not isinstance(_old, ConfigDict) or config_dict is _old
+        if not isinstance(config_dict, ConfigDict):
+            config_dict = ConfigDict(config_dict)
+
         if config_dict:
             Config.check_missing(config_dict)
             self._source = config_dict
-            pre_evaluate = config_dict.yamlfigns.deepcopy()
+            pre_evaluate = copy.deepcopy(config_dict)
             eval_ctx = EvalContext(pre_evaluate)
             evaluated = eval_ctx.evaluate()
         else:

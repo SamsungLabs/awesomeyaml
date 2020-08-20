@@ -124,14 +124,14 @@ class ComposedNode(ConfigNode):
             kwargs.setdefault('metadata', src._metadata)
             kwargs.setdefault('implicit_delete', src._implicit_delete)
 
-    def __init__(self, children, _nodes_cache=None, _cache_nodes=True, _force_new=False, _deep_new=False, **kwargs):
+    def __init__(self, children, nodes_memo=None, **kwargs):
         super().__init__(**kwargs)
         kwargs.pop('idx', None)
         kwargs.pop('metadata', None)
         if kwargs.pop('delete', None):
             kwargs['implicit_delete'] = True
-        _nodes_cache = _nodes_cache if _nodes_cache is not None else {}
-        self._children = { name: ConfigNode(child, **kwargs, _nodes_cache=_nodes_cache, _cache_nodes=_cache_nodes, _force_new=_force_new, _deep_new=_deep_new) for name, child in children.items() } # pylint: disable=unexpected-keyword-arg
+        nodes_memo = nodes_memo if nodes_memo is not None else {}
+        self._children = { name: ConfigNode(child, **kwargs, nodes_memo=nodes_memo) for name, child in children.items() } # pylint: disable=unexpected-keyword-arg
 
     class yamlfigns(Namespace):
         def set_child(self, name, value):
@@ -158,6 +158,8 @@ class ComposedNode(ConfigNode):
             return self._children.get(name, default)
 
         def has_child(self, name):
+            if '_children' not in self.__dict__:
+                return False
             return name in self._children
 
         @staticmethod
@@ -425,6 +427,14 @@ class ComposedNode(ConfigNode):
                             else:
                                 self.yamlfigns.set_child(key, value)
 
+            if other.yamlfigns.has_priority_over(self, if_equal=True):
+                self._merge_mode = other._merge_mode
+                self._delete = other._delete
+                self._implicit_delete = other._implicit_delete
+                self._metadata = { **self._metadata, **other._metadata }
+            else:
+                self._metadata = { **other._metadata, **self._metadata }
+
             return self
 
         @staticproperty
@@ -432,3 +442,9 @@ class ComposedNode(ConfigNode):
         def is_leaf():
             return False
 
+
+    def __getstate__(self):
+        return self.__dict__.copy()
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)

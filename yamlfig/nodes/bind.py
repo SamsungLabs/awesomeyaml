@@ -9,12 +9,17 @@ from functools import partial
 class BindNode(FunctionNode):
     @namespace('yamlfigns')
     def on_evaluate(self, path, ctx):
-        if isinstance(self._func, str):
-            self._func = import_name(self._func)
+        _func = self._func
+        if isinstance(_func, str):
+            _func = import_name(_func)
         args = ConfigDict.yamlfigns.on_evaluate(self, path, ctx)
-        return partial(self._func, **args)
+        p, kw_p, kw = FunctionNode._resolve_args(_func, args)
+        return partial(_func, *p, **kw_p, **kw)
 
     @namespace('yamlfigns')
     @property
     def tag(self):
-        return '!bind:' + self._func
+        _func = self._func
+        if not isinstance(_func, str):
+            _func = self._func.__module__ + '.' + self._func.__name__
+        return '!bind:' + _func

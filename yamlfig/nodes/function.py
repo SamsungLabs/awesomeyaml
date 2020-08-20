@@ -54,7 +54,7 @@ class FunctionNode(ConfigDict):
 
     @namespace('yamlfigns')
     def represent(self):
-        return self.yamlfigns.tag, self.yamlfigns.get_node_info(), super()._get_value()
+        return self.yamlfigns.tag, self.yamlfigns.get_node_info_to_save(), super()._get_value()
 
     @namespace('yamlfigns')
     @property
