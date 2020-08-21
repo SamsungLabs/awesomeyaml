@@ -442,9 +442,26 @@ class ComposedNode(ConfigNode):
         def is_leaf():
             return False
 
-
     def __getstate__(self):
-        return self.__dict__.copy()
+        state = self.__dict__.copy()
+        del state['_children']
+        return state
 
     def __setstate__(self, state):
         self.__dict__.update(state)
+
+    @staticmethod
+    def _recreate(cls):
+        new = cls.__new__(cls)
+        new._children = {}
+        return new
+
+    def __reduce__(self):
+        state = self.__getstate__()
+        lit = None
+        dit = None
+        if isinstance(self, list):
+            lit = iter(self)
+        elif isinstance(self, dict):
+            dit = iter(self.items())
+        return ComposedNode._recreate, (type(self), ), state, lit, dit
