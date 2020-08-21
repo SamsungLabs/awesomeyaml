@@ -138,8 +138,8 @@ class NamespaceableMeta(type):
             else:
                 continue
 
-            if name.startswith('_'):
-                raise ValueError(f'Private entities (with names starting with "_") cannot be put in a namespace, when processing namespace attribute for entity: {value}, with name: {name!r}')
+            if name.startswith('__'):
+                raise ValueError(f'Private entities (with names starting with "__") cannot be put in a namespace, when processing namespace attribute for entity: {value}, with name: {name!r}')
             if namespace_name in clsnamespace and not (isinstance(clsnamespace[namespace_name], type) and issubclass(clsnamespace[namespace_name], Namespace)):
                 raise ValueError(f'Cannot hide a class member {name!r} under a namespace {namespace_name!r} as the namespace name {namespace_name!r} is already in use by {clsnamespace[namespace_name]}')
             if namespace_name in namespaces and namespaces[namespace_name][None] is not namespace_type:
@@ -156,7 +156,8 @@ class NamespaceableMeta(type):
             namespace_type = namespace_values.pop(None)
             setattr(cls, namespace_name, namespace_type(cls, namespace_name, namespace_values))
             for name, value in namespace_values.items():
-                if name is not None and name in cls.__dict__:
+                # we need to take care of fields like '__module__'
+                if name is not None and name in cls.__dict__ and not name.startswith('__'):
                     delattr(cls, name)
 
 
