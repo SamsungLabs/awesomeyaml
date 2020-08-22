@@ -460,7 +460,7 @@ def parse(data, builder):
         yield ConfigNode(raw)
 
 
-def dump(output, nodes, open_mode='w', exclude_metadata=None):
+def dump(nodes, output=None, open_mode='w', exclude_metadata=None):
     close = False
     if isinstance(output, str):
         output = open(output, open_mode)
@@ -474,7 +474,11 @@ def dump(output, nodes, open_mode='w', exclude_metadata=None):
         return dumper
 
     try:
-        yaml.dump(ConfigNode(nodes), stream=output, Dumper=get_dumper)
+        ret = yaml.dump(ConfigNode(nodes), stream=output, Dumper=get_dumper)
     finally:
         if close:
             output.close()
+
+    if output is None:
+        return ret
+    return None
