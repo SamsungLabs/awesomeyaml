@@ -175,7 +175,7 @@ class ComposedNode(ConfigNode):
                     ret.append((child, name, path))
                 else:
                     ret.append(child)
-            
+
             _add(root, None)
             node = root
             found = True

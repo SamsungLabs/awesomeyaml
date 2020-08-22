@@ -162,7 +162,8 @@ class ConfigScalar(ConfigScalarMarker, metaclass=ConfigScalarMeta):
         if not self._dyn_instance:
             return object.__reduce__(self)
 
-        return ConfigScalar, (self._get_native_value(), ) # pylint: disable=no-member
+        state = self.__dict__.copy()
+        return ConfigScalar, (self._get_native_value(), ), state # pylint: disable=no-member
 
     def __eq__(self, other):
         if isinstance(other, ConfigScalar):

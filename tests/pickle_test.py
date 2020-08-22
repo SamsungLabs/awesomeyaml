@@ -40,13 +40,13 @@ class PickleTest(unittest.TestCase):
         from yamlfig.nodes.list import ConfigList
 
         test = ConfigList([1, 2, 3])
-        self.check_pickle(test)
+        self.check_pickle(test, composed=True)
 
     def test_dict(self):
         from yamlfig.nodes.dict import ConfigDict
 
         test = ConfigDict({ 'test': False, 1: None })
-        self.check_pickle(test)
+        self.check_pickle(test, composed=True)
 
 
 if __name__ == '__main__':

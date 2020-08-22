@@ -221,3 +221,11 @@ def add_module_properties(module_name, properties):
 
     if replace:
         sys.modules[module_name] = lazy_type(module)
+
+
+def python_is_at_least(major, minor):
+    return sys.version_info[0] > major or (sys.version_info[0] == major and sys.version_info[1] >= minor)
+
+
+def python_is_exactly(major, minor):
+    return sys.version_info[0] == major and sys.version_info[1] == minor

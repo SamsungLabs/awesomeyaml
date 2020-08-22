@@ -1,3 +1,4 @@
+import copy
 import unittest
 
 from .utils import setUpModule
@@ -114,6 +115,32 @@ class ListNodeTest(unittest.TestCase):
         self.assertEqual(l1, [1, 2, 3, 4])
         self.assertEqual(l1[-1], 4)
         self.assertEqual(l1.yamlfigns.children_count(), 4)
+
+    def test_copy(self):
+        from yamlfig.nodes.list import ConfigList
+        test = ConfigList([1, 2, [3, 4]])
+        c = copy.copy(test)
+        self.assertIsNot(test, c)
+        self.assertEqual(test, c)
+        self.assertEqual(test.yamlfigns.node_info, c.yamlfigns.node_info)
+        for path, node in test.yamlfigns.nodes_with_paths(include_self=False):
+            node2 = c.yamlfigns.get_node(path)
+            self.assertIs(node, node2)
+            self.assertEqual(node, node2)
+            self.assertEqual(node.yamlfigns.node_info, node2.yamlfigns.node_info)
+
+    def test_deepcopy(self):
+        from yamlfig.nodes.list import ConfigList
+        test = ConfigList([1, 2, [3, 4]])
+        c = copy.deepcopy(test)
+        self.assertIsNot(test, c)
+        self.assertEqual(test, c)
+        self.assertEqual(test.yamlfigns.node_info, c.yamlfigns.node_info)
+        for path, node in test.yamlfigns.nodes_with_paths(include_self=False):
+            node2 = c.yamlfigns.get_node(path)
+            self.assertIsNot(node, node2)
+            self.assertEqual(node, node2)
+            self.assertEqual(node.yamlfigns.node_info, node2.yamlfigns.node_info)
 
 
 if __name__ == '__main__':

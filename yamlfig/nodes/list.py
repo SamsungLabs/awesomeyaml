@@ -1,5 +1,6 @@
 from .composed import ComposedNode
 from ..namespace import namespace, staticproperty
+from .. import utils
 
 
 class ConfigList(ComposedNode, list):
@@ -90,6 +91,22 @@ class ConfigList(ComposedNode, list):
     def extend(self, other):
         for val in other:
             self.append(val)
+
+    if not utils.python_is_at_least(3, 7):
+        # for python < 3.7 (i.e., 3.6 and older)
+        # list subclasses are unpickled without calling
+        # custom 'append' and/or 'extend' and rather
+        # using "the fastest" possible option which is to
+        # populate the built-in function type alone
+        # (see: https://stackoverflow.com/questions/52333864/pickle-breaking-change-in-python-3-7)
+        # Because of that we need to populate _children
+        # of the composed node ourselves after the list has
+        # been unpickled (which happens before __setstate__
+        # is called).
+        def __setstate__(self, state):
+            super().__setstate__(state)
+            assert not self._children
+            self._children = { idx: child for idx, child in enumerate(self) }
 
     @namespace('yamlfigns')
     def merge(self, other):
