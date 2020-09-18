@@ -3,6 +3,7 @@ from .node import ConfigNode
 from ..namespace import namespace, staticproperty
 from ..errors import EvalError
 
+import os
 import sys
 import copy
 
@@ -21,7 +22,7 @@ class EvalNode(ConfigScalar(str)):
             ret = eval(lines[-1].strip(), gbls)
         except:
             et, e, _ = sys.exc_info()
-            raise EvalError(f'Exception occurred while evaluation an eval node {path!r} from file {str(self.yamlfigns.source_file)!r}:\n{et.__name__}: {e}') from None
+            raise EvalError(f'Exception occurred while evaluation an eval node {path!r} from file {str(self.yamlfigns.source_file)!r}:\n\nCode:\n{os.linesep.join(lines)}\n\nError:\n{et.__name__}: {e}') from None
 
         if isinstance(ret, ConfigNode):
             assert ret is not self
