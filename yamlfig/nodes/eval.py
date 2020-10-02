@@ -17,6 +17,7 @@ class EvalNode(ConfigScalar(str)):
         gbls = copy.copy(ctx.get_eval_symbols())
         gbls.update(dict(ctx.yamlfigns.named_children()))
         lines = self.strip().split('\n')
+        lines = [lline for line in lines for lline in line.split(';')]
         try:
             exec("\n".join(lines[:-1]), gbls)
             ret = eval(lines[-1].strip(), gbls)
