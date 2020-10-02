@@ -409,20 +409,17 @@ def _get_metadata_end(data, beg):
 
 
 def _get_metadata_content(data):
-    _metadata_tag = '!metadata'
-    curr_pos = data.find(_metadata_tag)
-    while curr_pos != -1:
-        beg = curr_pos + len(_metadata_tag)
-        if data[beg] != ':':
-            if data[beg:beg+2] != '{{':
-                raise ValueError(f'Metadata tag should be followed by "{{{{" at character: {curr_pos}')
-            end = _get_metadata_end(data, beg)
-            if end is None:
-                raise ValueError(f'Cannot find the end of a !metadata node which begins at: {curr_pos}')
-            
-            yield beg, end
-
-        curr_pos = data.find(_metadata_tag, end+1)
+    _metadata_tag = re.compile(r'(![a-zA-Z0-9_:.]+){{')
+    curr_match = _metadata_tag.search(data)
+    while curr_match is not None:
+        beg = curr_match.end(1)
+        assert data[beg:beg+2] == '{{'
+        end = _get_metadata_end(data, beg)
+        if end is None:
+            raise ValueError(f'Cannot find the end of a !metadata node which begins at: {curr_match.start()}')
+        
+        yield beg, end
+        curr_match = _metadata_tag.search(data, end+1)
 
 
 def _encode_all_metadata(data):
