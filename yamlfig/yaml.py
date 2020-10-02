@@ -184,7 +184,20 @@ def _call_constructor(loader, tag_suffix, node):
     return _make_node(loader, node, node_type=CallNode, kwargs={ 'func': target_f_name, 'metadata': metadata }, data_arg_name='args')
 
 
-def _eval_constructor(loader, node):
+
+def _eval_constructor(loader, tag_suffix, node):
+    from .nodes.eval import EvalNode
+    metadata = _decode_metadata(tag_suffix)
+    kwargs = {}
+    for special in ConfigNode.special_metadata_names:
+        if special in metadata:
+            kwargs[special] = metadata.pop(special)
+
+    kwargs['metadata'] = metadata
+    return _make_node(loader, node, node_type=EvalNode, kwargs=kwargs)
+
+
+def _simple_eval_constructor(loader, node):
     from .nodes.eval import EvalNode
     return _make_node(loader, node, node_type=EvalNode)
 
@@ -258,7 +271,8 @@ yaml.add_multi_constructor('!bind:', _bind_constructor) # full bind form: !bind:
 yaml.add_constructor('!bind', _simple_bind_constructor) # simple argumentless bind from string: !bind func_name
 yaml.add_multi_constructor('!call:', _call_constructor) # full call form: !call:func_name[:metadata] args_dict
 yaml.add_constructor('!call', _simple_call_constructor) # simple argumentless call from string: !call func_name
-yaml.add_constructor('!eval', _eval_constructor)
+yaml.add_multi_constructor('!eval:', _eval_constructor)
+yaml.add_constructor('!eval', _simple_eval_constructor)
 yaml.add_constructor('!fstr', _fstr_constructor)
 yaml.add_implicit_resolver('!fstr', _fstr_regex)
 yaml.add_constructor('!import', _import_constructor)
