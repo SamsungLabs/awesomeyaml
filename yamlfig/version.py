@@ -30,7 +30,7 @@ try:
     assert version == info.version
     repo = info.repo
     commit = info.commit
-except ImportError:
+except (ImportError, SystemError):
     pass
 
 __all__ = ['version', 'repo', 'commit', 'has_repo']
