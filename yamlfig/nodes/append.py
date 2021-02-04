@@ -5,6 +5,26 @@ from collections import Sequence
 
 
 class AppendNode(ConfigList):
+    ''' A class implementing ``!append`` node.
+
+        The append tag creates a list node which appends its
+        content to another list on merge, instead of overwriting it.
+
+        Supported syntax::
+
+            !append [list]
+
+        Merge behaviour:
+
+            ==================  =================================
+            Case                Behaviour
+            ==================  =================================
+            ``A <- Append``     ``return A.extend(Append)``
+            ``None <- Append``  ``raise KeyError``
+            otherwise           behaves as :py:class:`ConfigList`
+            ==================  =================================
+
+    '''
     def __init__(self, value, **kwargs):
         if not isinstance(value, Sequence) or isinstance(value, str) or isinstance(value, bytes):
             value = [value]

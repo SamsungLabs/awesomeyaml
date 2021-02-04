@@ -13,6 +13,55 @@ _abs_regexp = re.compile(r'abs\(([a-zA-Z0-9_/\ -.]+)\)')
 
 
 class PathNode(ConfigList):
+    ''' Implements ``!path`` tag.
+
+        Path nodes can be used as a convenient way of defining
+        paths in the underlaying file system.
+        Internally, they are treated as list whose elements are
+        names of components in the file system. A simple way of
+        thinking about a path node is to interpret it as a list
+        of arguments to ``os.path.join``.
+
+        > Path nodes evaluate to ``pathlib.Path``.
+        > Path nodes do not expand user home directory (i.e., ``~``)
+        > Path nodes automatically normalize paths with ``os.path.normpath``
+
+        In addition to holding a list of components, the path node object
+        is extended with a single string specifying a *reference point*.
+        This reference point defines the initial folder from which
+        traversing the of file system begins.
+        The end-to-end behaviour of a path node when evaluating can be
+        summarized as::
+
+            return pathlib.Path(self.get_reference_point()).joinpath(*self.components)
+
+        Supported syntax::
+
+            !path [names]       # long form, implicit ref. point (see below)
+            !path:* [names]     # long form, explicit ref. point (see below for avail. values for *)
+
+            !path name          # short form, eq. to: !path [name]
+            !path:* name        # short form, eq. to: !path:* [name],
+
+        Currently the following reference point specifiers are supported :
+
+            ==============  ========================================================================
+            Specifier       Value
+            ==============  ========================================================================
+            *(implicit)*    ``"."`` (default)
+            cwd             ``os.getcwd()``
+            file            name of the yaml file containing the path node
+            parent          parent of the yaml file containing the path node (i.e., its folder)
+            parent(n)       the n-th parent of the yaml file (0-based)
+            abs(path)       user-defined ``path``
+            ==============  ========================================================================
+
+
+        Merge behaviour:
+
+            The same as for list nodes.
+
+    '''
     def __init__(self, values, ref_point, src_filename, **kwargs):
         if not isinstance(values, Sequence) or isinstance(values, str) or isinstance(values, bytes):
             if not values:
