@@ -392,15 +392,12 @@ class ComposedNode(ConfigNode):
             other.yamlfigns.premerge(self)
             if other.yamlfigns.delete:
                 def maybe_keep(path, node):
-                    try:
-                        other.yamlfigns.get_node(path)
-                    except KeyError:
-                        other_node = other.yamlfigns.get_first_not_missing_node(path)
-                        return node.yamlfigns.has_priority_over(other_node)
-                    else:
-                        return True
+                    other_node = other.yamlfigns.get_first_not_missing_node(path)
+                    return node.yamlfigns.has_priority_over(other_node)
 
                 self.yamlfigns.filter_nodes(maybe_keep)
+                if not self._children and other.yamlfigns.has_priority_over(self, if_equal=True):
+                    return other
 
             for key, value in other._children.items():
                 child = self.yamlfigns.get_child(key, None)

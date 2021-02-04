@@ -1,3 +1,5 @@
+import collections.abc as cabc
+
 from .composed import ComposedNode
 from ..namespace import namespace
 from ..utils import Bunch
@@ -87,8 +89,8 @@ class ConfigDict(ComposedNode, dict):
 
     @namespace('yamlfigns')
     def merge(self, other):
-        if not isinstance(other, dict):
-            raise TypeError('Dict expected')
+        if not isinstance(other, dict) and not isinstance(other, cabc.Sequence):
+            raise TypeError('Dict or sequence expected')
 
         return super().yamlfigns.merge(other)
 

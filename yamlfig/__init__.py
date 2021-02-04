@@ -1,8 +1,11 @@
 from . import config
 from . import builder
 from . import eval_context
+from . import yaml
 
 Config = config.Config
+Builder = builder.Builder
+EvalContext = eval_context.EvalContext
 
 
 from .utils import add_module_properties

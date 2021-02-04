@@ -3,6 +3,7 @@ import re
 import copy
 import pickle
 import tokenize
+import contextlib
 import collections
 
 from .nodes.node import ConfigNode
@@ -11,6 +12,22 @@ from .utils import pad_with_none
 
 
 _fstr_regex = re.compile(r"^\s*f(['\"]).*\1\s*$")
+
+_global_ctx = None
+
+
+@contextlib.contextmanager
+def global_ctx(filename):
+    global _global_ctx
+    if _global_ctx is None:
+        import yamlfig.builder as b
+        _global_ctx = b.Builder()
+
+    _global_ctx._current_file = filename
+    with ConfigNode.default_filename(filename):
+        yield _global_ctx
+    _global_ctx._current_file = None
+
 
 
 def _encode_metadata(metadata):
@@ -454,21 +471,36 @@ def _encode_all_metadata(data):
     return data
 
 
-def parse(data, builder):
+def parse(data, filename_or_builder=None):
     if not isinstance(data, str):
         data = data.read()
 
-    #print(data)
-    data = _encode_all_metadata(data)
-    def get_loader(*args, **kwargs):
-        loader = yaml.Loader(*args, **kwargs)
-        loader.context = builder
-        if builder.get_current_file():
-            loader.name = builder.get_current_file()
-        return loader
+    @contextlib.contextmanager
+    def _dummy(context):
+        yield context
 
-    for raw in yaml.load_all(data, Loader=get_loader):
-        yield ConfigNode(raw)
+    try:
+        filename_or_builder.get_current_stage_idx()
+    except:
+        # filename_or_builder doesn't seem to be a builder
+        # use global context
+        context_fn = global_ctx
+    else:
+        # filename_or_builder behaves like builder so let's use it
+        # as it is
+        context_fn = _dummy
+
+    #print(data)
+    with context_fn(filename_or_builder) as context:
+        data = _encode_all_metadata(data)
+        def get_loader(*args, **kwargs):
+            loader = yaml.Loader(*args, **kwargs)
+            loader.context = context
+            loader.name = context.get_current_file()
+            return loader
+
+        for raw in yaml.load_all(data, Loader=get_loader):
+            yield ConfigNode(raw)
 
 
 def dump(nodes, output=None, open_mode='w', exclude_metadata=None):
