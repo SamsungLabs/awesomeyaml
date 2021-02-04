@@ -38,6 +38,5 @@ jobs:
           command: |
             pipenv run python -m unittest discover -v -s . -p "*_test.py"
 
-      - store_artifacts:
-          path: test-reports
-          destination: test-reports
+      - store_test_results:
+          path: test-results
