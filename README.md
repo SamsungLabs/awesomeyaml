@@ -1,7 +1,7 @@
 # yamlfig
 
 Yamlfig is a Python-based library which extends standard yaml with a set of custom tags and a processing pipeline designed to make the process of building and manipulating yaml-based config files easier (yamlfig == **YAML**-based con**FIG**).
-We use a popular [pyyaml]() package as the core component to read and write yaml files.
+We use a popular [pyyaml](https://pypi.org/project/PyYAML/) package as the core component to read and write yaml files.
 
 > **Note:** Yamlfig is *NOT* designed to be safe! Be cautious when using it with externally provided content.
 
