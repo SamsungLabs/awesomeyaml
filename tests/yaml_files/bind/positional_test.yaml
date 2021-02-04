@@ -1,0 +1,13 @@
+---
+f: !bind:tests.utils.linear_f
+    0: 0
+
+
+###EXPECTED
+skip
+
+###VALIDATE
+with self.assertRaises(TypeError):
+  result.f(2)
+self.assertEqual(result.f(a=2), 0)
+self.assertEqual(result.f(a=2,b=2), 2)

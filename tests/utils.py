@@ -15,3 +15,7 @@ def linear_f(x, *, a=1, b=0):
 
 def cubic_f(x, *, a=1, b=0):
     return a*(x**3) + b
+
+
+def square_f(x, a=1, b=0):
+    return a*(x**2) + b

@@ -1,0 +1,13 @@
+---
+f: !bind:tests.utils.square_f
+    0: 4
+    1: 2
+
+
+###EXPECTED
+skip
+
+###VALIDATE
+# f should be 2*(4**2) + c
+self.assertEqual(result.f(0), 32)
+self.assertEqual(result.f(2), 34)
