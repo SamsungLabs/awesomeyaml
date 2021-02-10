@@ -158,7 +158,7 @@ def _metadata_constructor(loader, tag_suffix, node):
 
 def _include_constructor(loader, node):
     from .nodes.include import IncludeNode
-    return _make_node(loader, node, node_type=IncludeNode, kwargs={ 'ref_file': loader.context.get_current_file() }, dict_is_data=False)
+    return _make_node(loader, node, node_type=IncludeNode, dict_is_data=False)
 
 
 def _prev_constructor(loader, node):

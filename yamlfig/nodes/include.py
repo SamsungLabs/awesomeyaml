@@ -72,7 +72,7 @@ class IncludeNode(ConfigNode):
                 cfg = yamlfig.Config.build('master_file')
 
     '''
-    def __init__(self, filenames, *args, ref_file=None, **kwargs):
+    def __init__(self, filenames, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         if not isinstance(filenames, collections.Sequence) or isinstance(filenames, str):
@@ -83,7 +83,6 @@ class IncludeNode(ConfigNode):
                 raise ValueError(f'Include node expects a string parameter with a filename to read, but got: {type(filename)}')
 
         self.filenames = filenames
-        self.ref_file = ref_file
 
     @namespace('yamlfigns')
     def on_preprocess(self, path, builder):
@@ -91,7 +90,7 @@ class IncludeNode(ConfigNode):
         missing = []
         for filename in self.filenames:
             found = False
-            for lookup_dir in subbuilder.get_lookup_dirs(self.ref_file):
+            for lookup_dir in subbuilder.get_lookup_dirs(self._source_file):
                 file = os.path.join(lookup_dir, filename)
                 try:
                     subbuilder.add_source(file, raw_yaml=False)
@@ -106,7 +105,7 @@ class IncludeNode(ConfigNode):
                 missing.append(filename)
 
         if missing:
-            raise FileNotFoundError({ 'missing': missing, 'lookup_dirs': list(subbuilder.get_lookup_dirs(self.ref_file)) })
+            raise FileNotFoundError({ 'missing': missing, 'lookup_dirs': list(subbuilder.get_lookup_dirs(self._source_file)) })
 
         return subbuilder.build().yamlfigns.on_preprocess(path, builder)
 

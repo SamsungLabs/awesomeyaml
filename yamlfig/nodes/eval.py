@@ -6,6 +6,9 @@ from ..errors import EvalError
 import os
 import sys
 import copy
+import types
+import ctypes
+import hashlib
 
 
 class EvalNode(ConfigScalar(str)):
@@ -40,13 +43,21 @@ class EvalNode(ConfigScalar(str)):
 
             The same as standard string node.
     '''
-    def __init__(self, value, **kwargs):
+    _top_namespace_module_name = 'yamlfig.eval_node_namespace'
+
+    def __init__(self, value, persistent_namespace=True, source_file=None, **kwargs):
         super().__init__(value, **kwargs)
+        self.persistent_namespace = persistent_namespace
 
     @namespace('yamlfigns')
     def on_evaluate(self, path, ctx):
+        code_hash = hashlib.md5(str(self).encode('utf-8')).hexdigest()
+        eval_module_name = f'{EvalNode._top_namespace_module_name}.{str(path).replace(".", "_")}_0x{code_hash}'
+
         gbls = copy.copy(ctx.get_eval_symbols())
         gbls.update(dict(ctx.yamlfigns.named_children()))
+        gbls.update({ '__name__': eval_module_name, '__file__': self._source_file })
+
         lines = self.strip().split('\n')
         lines = [lline for line in lines for lline in line.split(';')]
         try:
@@ -55,6 +66,11 @@ class EvalNode(ConfigScalar(str)):
         except:
             et, e, _ = sys.exc_info()
             raise EvalError(f'Exception occurred while evaluation an eval node {path!r} from file {str(self.yamlfigns.source_file)!r}:\n\nCode:\n{os.linesep.join(lines)}\n\nError:\n{et.__name__}: {e}') from None
+
+        if len(lines) > 1 and self.persistent_namespace:
+            eval_node_module = types.ModuleType(eval_module_name, 'Dynamic module to evaluate yamlfig !eval node')
+            eval_node_module.__dict__.update(gbls)
+            sys.modules[eval_module_name] = eval_node_module
 
         if isinstance(ret, ConfigNode):
             assert ret is not self
