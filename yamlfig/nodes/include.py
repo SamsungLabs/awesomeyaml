@@ -82,7 +82,7 @@ class IncludeNode(ConfigNode):
             if not isinstance(filename, str):
                 raise ValueError(f'Include node expects a string parameter with a filename to read, but got: {type(filename)}')
 
-        self.filenames = filenames
+        self.filenames = [os.path.expanduser(f) for f in filenames]
 
     @namespace('yamlfigns')
     def on_preprocess(self, path, builder):

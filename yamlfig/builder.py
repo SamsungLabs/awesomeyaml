@@ -130,7 +130,7 @@ class Builder():
 
         if isinstance(source, str) and not raw_yaml:
             try:
-                with open(source, 'r') as f:
+                with open(os.path.expanduser(source), 'r') as f:
                     self._current_file = source
                     source = f.read()
             except (FileNotFoundError, OSError) as e:
