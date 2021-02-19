@@ -1,0 +1,9 @@
+---
+test: !eval foo**2
+---
+foo: 4
+
+
+###EXPECTED
+test: 16
+foo: 4

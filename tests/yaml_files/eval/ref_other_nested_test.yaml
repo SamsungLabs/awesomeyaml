@@ -1,0 +1,10 @@
+---
+test: !call:tests.utils.cubic_f
+    x: !eval foo**2
+---
+foo: 4
+
+
+###EXPECTED
+test: 4096
+foo: 4
