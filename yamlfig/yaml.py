@@ -170,6 +170,18 @@ def _xref_constructor(loader, node):
     from .nodes.xref import XRefNode
     return _make_node(loader, node, node_type=XRefNode)
 
+def _xref_constructor_md(loader, tag_suffix, node):
+    metadata = _decode_metadata(tag_suffix)
+    kwargs = {}
+    for special in ConfigNode.special_metadata_names:
+        if special in metadata:
+            kwargs[special] = metadata.pop(special)
+
+    kwargs['metadata'] = metadata
+
+    from .nodes.xref import XRefNode
+    return _make_node(loader, node, kwargs=kwargs, node_type=XRefNode)
+
 
 def _simple_bind_constructor(loader, node):
     from .nodes.bind import BindNode
@@ -247,12 +259,45 @@ def _required_constructor(loader, node):
     return _make_node(loader, node, node_type=_check_empty_str)
 
 
+def _required_constructor_md(loader, tag_suffix, node):
+    metadata = _decode_metadata(tag_suffix)
+    kwargs = {}
+    for special in ConfigNode.special_metadata_names:
+        if special in metadata:
+            kwargs[special] = metadata.pop(special)
+
+    kwargs['metadata'] = metadata
+
+    from .nodes.required import RequiredNode
+    def _check_empty_str(arg, **kwargs):
+        if arg != '':
+            raise ValueError(f'!required node does not expect any arguments - got: {arg}')
+        return RequiredNode(**kwargs)
+    return _make_node(loader, node, kwargs=kwargs, node_type=_check_empty_str)
+
+
 def _none_constructor(loader, node):
     def _check_empty_str(arg, *args, **kwargs):
         if arg != '' or args:
             raise ValueError(f'!null does not expect any arguments - got: {[arg]+list(args)}')
         return None
     return _make_node(loader, node, node_type=_check_empty_str)
+
+
+def _none_constructor_md(loader, tag_suffix, node):
+    metadata = _decode_metadata(tag_suffix)
+    kwargs = {}
+    for special in ConfigNode.special_metadata_names:
+        if special in metadata:
+            kwargs[special] = metadata.pop(special)
+
+    kwargs['metadata'] = metadata
+
+    def _check_empty_str(arg, *args, **kwargs):
+        if arg != '' or args:
+            raise ValueError(f'!null does not expect any arguments - got: {[arg]+list(args)}')
+        return None
+    return _make_node(loader, node, kwargs=kwargs, node_type=_check_empty_str)
 
 
 def _simple_path_constructor(loader, node):
@@ -284,6 +329,7 @@ yaml.add_multi_constructor('!metadata:', _metadata_constructor)
 yaml.add_constructor('!include', _include_constructor)
 yaml.add_constructor('!prev', _prev_constructor)
 yaml.add_constructor('!xref', _xref_constructor)
+yaml.add_multi_constructor('!xref:', _xref_constructor_md)
 yaml.add_multi_constructor('!bind:', _bind_constructor) # full bind form: !bind:func_name[:metadata] args_dict
 yaml.add_constructor('!bind', _simple_bind_constructor) # simple argumentless bind from string: !bind func_name
 yaml.add_multi_constructor('!call:', _call_constructor) # full call form: !call:func_name[:metadata] args_dict
@@ -294,7 +340,9 @@ yaml.add_constructor('!fstr', _fstr_constructor)
 yaml.add_implicit_resolver('!fstr', _fstr_regex)
 yaml.add_constructor('!import', _import_constructor)
 yaml.add_constructor('!required', _required_constructor)
+yaml.add_multi_constructor('!required:', _required_constructor_md)
 yaml.add_constructor('!null', _none_constructor)
+yaml.add_multi_constructor('!null:', _none_constructor_md)
 yaml.add_multi_constructor('!path:', _path_constructor)
 yaml.add_constructor('!path', _simple_path_constructor)
 
