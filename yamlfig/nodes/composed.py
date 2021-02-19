@@ -417,12 +417,14 @@ class ComposedNode(ConfigNode):
                             self.yamlfigns.remove_child(key)
                         elif possibly_new_child is not child:
                             self.yamlfigns.set_child(key, possibly_new_child)
+                            possibly_new_child._metadata = { **child._metadata, **possibly_new_child._metadata }
                     else:
                         if value.yamlfigns.has_priority_over(child, if_equal=True):
                             if not value and value.yamlfigns.explicit_delete:
                                 self.yamlfigns.remove_child(key)
                             else:
                                 self.yamlfigns.set_child(key, value)
+                                value._metadata = { **child._metadata, **value._metadata }
 
             if other.yamlfigns.has_priority_over(self, if_equal=True):
                 self._merge_mode = other._merge_mode
