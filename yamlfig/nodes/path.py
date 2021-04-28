@@ -123,7 +123,7 @@ class PathNode(ConfigList):
     @property
     def value(self):
         return {
-            'values': super()._get_value(),
+            'values': list(super()._get_value()),
             'ref_point': self.ref_point,
             'src_filename': self.src_filename
         }
