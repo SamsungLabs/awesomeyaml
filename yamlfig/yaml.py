@@ -1,6 +1,6 @@
 import yaml
 import re
-import copy
+import token
 import pickle
 import tokenize
 import contextlib
@@ -474,8 +474,8 @@ def _get_metadata_end(data, beg):
          
     last_close = False
     end = None
-    for token in tokenize.tokenize(_readline):
-        if token.type == 53 and token.string == '}':
+    for tok in tokenize.tokenize(_readline):
+        if tok.type == token.OP and tok.string == '}':
             if last_close:
                 end = _beg
                 break
