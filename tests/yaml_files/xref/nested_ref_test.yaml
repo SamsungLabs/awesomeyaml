@@ -1,0 +1,17 @@
+---
+foo:
+    a: !ref bar.a
+---
+bar:
+    a: 1
+
+
+###EXPECTED
+foo:
+    a: 1
+
+bar:
+    a: 1
+
+###VALIDATE
+self.assertIs(result.foo.a, result.bar.a)

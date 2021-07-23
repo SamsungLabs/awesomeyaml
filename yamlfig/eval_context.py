@@ -127,6 +127,9 @@ class EvalContext(metaclass=NamespaceableMeta):
         evaluated_parent = None
         if prefix:
             evaluated_parent = self.yamlfigns.get_node(prefix[:-1])
+            if isinstance(evaluated_parent, ConfigNode):
+                evaluated_parent = self.evaluate_node(evaluated_parent, prefix=prefix[:-1])
+
             evaluated_parent[prefix[-1]] = EvalContext.PartialChild(prefix, self)
 
         evaluated_cfgobj = maybe_evaluate(cfgobj)

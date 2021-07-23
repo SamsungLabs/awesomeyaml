@@ -1,0 +1,12 @@
+---
+a: [1, 2]
+b: null
+---
+b: !xref a[1]
+
+###EXPECTED
+a: [1, 2]
+b: 2
+
+###VALIDATE
+self.assertIs(result.a[1], result.b)

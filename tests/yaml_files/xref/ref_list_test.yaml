@@ -1,0 +1,15 @@
+---
+a: [1, 2]
+b: !xref a[0]
+c: !xref a[1]
+---
+a: [3, 4]
+
+###EXPECTED
+a: [3,4]
+b: 3
+c: 4
+
+###VALIDATE
+self.assertIs(result.a[0], result.b)
+self.assertIs(result.a[1], result.c)
