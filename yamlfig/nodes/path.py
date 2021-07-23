@@ -103,7 +103,13 @@ class PathNode(ConfigList):
         elif ref_point == 'file':
             ret = pathlib.Path(self.src_filename).joinpath(*args)
         elif ref_point == 'parent':
-            ret = pathlib.Path(self.src_filename).parents[ref_point_args].joinpath(*args)
+            src = pathlib.Path(self.src_filename)
+            if ref_point_args >= len(src.parents):
+                diff = ref_point_args - len(src.parents) + 1
+                ref_point_args = len(src.parents) - 1
+                args = ['..'] * diff + args
+
+            ret = src.parents[ref_point_args].joinpath(*args)
         elif ref_point == 'abs':
             ret = pathlib.Path(ref_point_args).joinpath(*args)
         else:
