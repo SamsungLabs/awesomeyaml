@@ -1,0 +1,12 @@
+---
+a: !ref future
+---
+future: test
+
+
+###EXPECTED
+a: test
+future: test
+
+###VALIDATE
+self.assertIs(result.a, result.future)

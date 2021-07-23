@@ -330,6 +330,8 @@ yaml.add_constructor('!include', _include_constructor)
 yaml.add_constructor('!prev', _prev_constructor)
 yaml.add_constructor('!xref', _xref_constructor)
 yaml.add_multi_constructor('!xref:', _xref_constructor_md)
+yaml.add_constructor('!ref', _xref_constructor)
+yaml.add_multi_constructor('!ref:', _xref_constructor_md)
 yaml.add_multi_constructor('!bind:', _bind_constructor) # full bind form: !bind:func_name[:metadata] args_dict
 yaml.add_constructor('!bind', _simple_bind_constructor) # simple argumentless bind from string: !bind func_name
 yaml.add_multi_constructor('!call:', _call_constructor) # full call form: !call:func_name[:metadata] args_dict

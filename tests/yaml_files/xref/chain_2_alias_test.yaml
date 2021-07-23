@@ -1,0 +1,16 @@
+---
+a: !ref b
+---
+b: !ref c
+---
+c: test
+
+
+###EXPECTED
+a: test
+b: test
+c: test
+
+###VALIDATE
+self.assertIs(result.a, result.b)
+self.assertIs(result.a, result.c)
