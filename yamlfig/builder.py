@@ -130,8 +130,10 @@ class Builder():
 
         if isinstance(source, str) and not raw_yaml:
             try:
-                with open(os.path.expanduser(source), 'r') as f:
-                    self._current_file = source
+                _filename = os.path.expanduser(source)
+                _filename = os.path.abspath(_filename)
+                with open(_filename, 'r') as f:
+                    self._current_file = _filename
                     source = f.read()
             except (FileNotFoundError, OSError) as e:
                 #OSError(22) is "Invalid argument"
@@ -142,7 +144,9 @@ class Builder():
 
         try:
             if filename is not None:
-                self._current_file = filename
+                _filename = os.path.expanduser(filename)
+                _filename = os.path.abspath(_filename)
+                self._current_file = _filename
 
             with ConfigNode.default_filename(self._current_file):
                 from . import yaml
