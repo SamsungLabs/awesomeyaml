@@ -1,4 +1,5 @@
 import copy
+import collections.abc as cabc
 
 from .nodes.dict import ConfigDict
 from .eval_context import EvalContext
@@ -115,6 +116,7 @@ class Config(Bunch, metaclass=NamespaceableMeta):
         ret = '' #ind*init_level
         stack = [[self, init_level, None]]
         emitted_recently = False
+        offset = 0
         while stack:
             frame = stack[-1]
             obj, level, i = frame
@@ -142,9 +144,16 @@ class Config(Bunch, metaclass=NamespaceableMeta):
                     except TypeError:
                         finished = True
                         emit = True
-
                     else:
                         if not obj:
+                            finished = True
+                            emit = True
+                            i = None
+                        elif Config._pprint_is_simple_list(obj):
+                            offset_fix = 0
+                            if len(stack) > 1 and isinstance(stack[-2][0], dict):
+                                offset_fix = 1 # account for the extra scape that is added in the `elif emit:` block below
+                            to_emit = Config._pprint_format_simple_list(obj, ind*level, width_limit=160, offset=offset+offset_fix)
                             finished = True
                             emit = True
                             i = None
@@ -154,11 +163,14 @@ class Config(Bunch, metaclass=NamespaceableMeta):
                     if len(stack) > 1 and isinstance(stack[-2][0], dict): # if a dict contains a collection, add newline after key
                         if not emit:
                             ret += '\n'
+                            offset = 0
                         else: # the same as below, but special case when `not finished and emit`
                             ret += ' '
+                            offset += 1
                 elif emit:
                     if len(stack) > 1 and isinstance(stack[-2][0], dict): # if a dict contains an empty collection or scalar value, add space after key
                         ret += ' '
+                        offset += 1
 
             if emit:
                 try:
@@ -166,6 +178,7 @@ class Config(Bunch, metaclass=NamespaceableMeta):
                 except ValueError:
                     ret += repr(to_emit)
                 ret += '\n'
+                offset = 0
                 emitted_recently = True
 
             if not finished:
@@ -178,10 +191,12 @@ class Config(Bunch, metaclass=NamespaceableMeta):
                         ret += ind*level
                         ret += str(child)
                         ret += ':'
+                        offset += len(ind) * level + len(str(child)) + 1
                         child = obj[child]
                     else:
                         ret += ind*level
                         ret += '- '
+                        offset += len(ind) * level + 2
 
                     stack.append([child, level+1, None])
 
@@ -190,6 +205,39 @@ class Config(Bunch, metaclass=NamespaceableMeta):
                 # we finished a non-empty interable, add extra newline
                 if i is not None and emitted_recently:
                     ret += '\n'
+                    offset = 0
                     emitted_recently = False
 
+        return ret
+
+    @staticmethod
+    def _pprint_is_simple_list(obj):
+        if isinstance(obj, cabc.Sequence) and not isinstance(obj, (str, bytes)):
+            if all(isinstance(e, (int, float)) or (isinstance(e, str) and len(e) < 25 and '\n' not in e) for e in obj):
+                return True
+        return False
+
+    @staticmethod
+    def _pprint_format_simple_list(obj, ind, width_limit=160, offset=0):
+        width_limit += max(0, max(len(ind), offset) - width_limit + 40) # make sure we have at least 40 characters per line, violate width limit if necessary
+        ret = ''
+        line = ''
+        sep = '['
+        size = len(obj)
+        for i, e in enumerate(obj):
+            to_add = sep + repr(e)
+            if i+1 < size:
+                to_add += ','
+            else:
+                to_add += ']'
+
+            if len(line) + len(to_add) + offset >= width_limit:
+                ret += line + '\n'
+                line = ind + to_add
+                offset = 0
+            else:
+                line += to_add
+                sep = ' '
+
+        ret += line
         return ret
