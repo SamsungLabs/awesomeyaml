@@ -553,7 +553,7 @@ def parse(data, filename_or_builder=None):
             yield ConfigNode(raw)
 
 
-def dump(nodes, output=None, open_mode='w', exclude_metadata=None):
+def dump(nodes, output=None, open_mode='w', exclude_metadata=None, **kwargs):
     close = False
     if isinstance(output, str):
         output = open(output, open_mode)
@@ -567,7 +567,7 @@ def dump(nodes, output=None, open_mode='w', exclude_metadata=None):
         return dumper
 
     try:
-        ret = yaml.dump(ConfigNode(nodes), stream=output, Dumper=get_dumper)
+        ret = yaml.dump(ConfigNode(nodes), stream=output, Dumper=get_dumper, **kwargs)
     finally:
         if close:
             output.close()
