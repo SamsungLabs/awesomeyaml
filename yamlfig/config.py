@@ -125,9 +125,12 @@ class Config(Bunch, metaclass=NamespaceableMeta):
             emit = False
             if i is None:
                 if isinstance(obj, functools.partial):
-                    assert not obj.args
+                    args = obj.keywords.copy()
+                    if obj.args:
+                        args.update({ idx: arg for idx, arg in enumerate(obj.args) })
+
                     to_emit = obj.func
-                    obj = obj.keywords
+                    obj = args
                     frame[0] = obj
                     emit = True
 
