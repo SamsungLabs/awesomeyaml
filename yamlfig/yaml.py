@@ -521,7 +521,7 @@ def _encode_all_metadata(data):
     return data
 
 
-def parse(data, filename_or_builder=None):
+def parse(data, filename_or_builder=None, config_nodes=True):
     if not isinstance(data, str):
         data = data.read()
 
@@ -550,7 +550,10 @@ def parse(data, filename_or_builder=None):
             return loader
 
         for raw in yaml.load_all(data, Loader=get_loader):
-            yield ConfigNode(raw)
+            if config_nodes:
+                yield ConfigNode(raw)
+            else:
+                yield ConfigNode(raw).yamlfigns.value
 
 
 def dump(nodes, output=None, open_mode='w', exclude_metadata=None, **kwargs):
