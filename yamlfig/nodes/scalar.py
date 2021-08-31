@@ -132,7 +132,10 @@ class ConfigScalar(ConfigScalarMarker, metaclass=ConfigScalarMeta):
         return node + '(' + self._dyn_base.__repr__(self) + ')' # pylint: disable=no-member
 
     def __str__(self):
-        return self._dyn_base.__str__(self) # pylint: disable=no-member
+        if self._dyn_base is str:
+            return str.__str__(self)
+
+        return str(self._dyn_base(self)) # pylint: disable=no-member
 
     def _get_value(self):
         if self._dyn_base in [configbool, ConfigNone]: # pylint: disable=no-member
