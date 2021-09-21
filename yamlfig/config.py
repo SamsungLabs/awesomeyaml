@@ -112,6 +112,11 @@ class Config(Bunch, metaclass=NamespaceableMeta):
         import io
         import functools
 
+        try:
+            import torch.nn as nn
+        except:
+            nn = None
+
         ind = ' '*ind
         ret = '' #ind*init_level
         stack = [[self, init_level, None]]
@@ -133,6 +138,10 @@ class Config(Bunch, metaclass=NamespaceableMeta):
                     obj = args
                     frame[0] = obj
                     emit = True
+                elif nn is not None and isinstance(obj, nn.Module):
+                    obj = f'<Neural network of type \'{type(obj).__module__}.{type(obj).__qualname__}\' with {sum(p.numel() for p in obj.parameters())} parameters and {sum(1 for _ in obj.modules())} submodules>'
+                    to_emit = obj
+
 
                 if isinstance(obj, str) or isinstance(obj, bytes) or isinstance(obj, io.IOBase):
                     finished = True
@@ -155,7 +164,7 @@ class Config(Bunch, metaclass=NamespaceableMeta):
                         elif Config._pprint_is_simple_list(obj):
                             offset_fix = 0
                             if len(stack) > 1 and isinstance(stack[-2][0], dict):
-                                offset_fix = 1 # account for the extra scape that is added in the `elif emit:` block below
+                                offset_fix = 1 # account for the extra space that is added in the `elif emit:` block below
                             to_emit = Config._pprint_format_simple_list(obj, ind*level, width_limit=160, offset=offset+offset_fix)
                             finished = True
                             emit = True
