@@ -72,7 +72,7 @@ class PathNode(ConfigList):
         super().__init__(values, **kwargs)
 
         self.ref_point = ref_point or ''
-        self.src_filename = src_filename
+        self.src_filename = os.path.normpath(src_filename)
 
         self._ref_point_parsed = None
         if self.ref_point not in ['', 'cwd', 'file']:
@@ -115,7 +115,8 @@ class PathNode(ConfigList):
         else:
             raise ValueError(f'Unknown reference point: {ref_point!r}')
 
-        return pathlib.Path(os.path.normpath(ret))
+        ret = pathlib.Path(os.path.normpath(ret))
+        return ret
 
 
     @namespace('yamlfigns')

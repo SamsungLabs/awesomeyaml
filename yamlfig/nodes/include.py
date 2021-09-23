@@ -91,7 +91,7 @@ class IncludeNode(ConfigNode):
         for filename in self.filenames:
             found = False
             for lookup_dir in subbuilder.get_lookup_dirs(self._source_file):
-                file = os.path.join(lookup_dir, filename)
+                file = os.path.normpath(os.path.join(lookup_dir, filename))
                 try:
                     subbuilder.add_source(file, raw_yaml=False)
                     found = True
