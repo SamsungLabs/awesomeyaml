@@ -117,7 +117,7 @@ class ConfigDict(ComposedNode, dict):
         return self
 
     def _get_native_value(self):
-        return dict(self)
+        return dict((k,v.yamlfigns.native_value) for k,v in self.items())
 
     def _set_value(self, other):
         self.clear()

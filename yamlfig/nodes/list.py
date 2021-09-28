@@ -152,7 +152,7 @@ class ConfigList(ComposedNode, list):
         return self
 
     def _get_native_value(self):
-        return list(self)
+        return list(n.yamlfigns.native_value for n in self)
 
     def _set_value(self, other):
         self.clear()

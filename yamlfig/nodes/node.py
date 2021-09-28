@@ -170,6 +170,10 @@ class ConfigNode(metaclass=ConfigNodeMeta):
         def value(self):
             return self._get_value()
 
+        @property
+        def native_value(self):
+            return self._get_native_value()
+
         @value.setter
         def value(self, value):
             return self._set_value(value)
