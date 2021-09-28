@@ -553,7 +553,7 @@ def parse(data, filename_or_builder=None, config_nodes=True):
             if config_nodes:
                 yield ConfigNode(raw)
             else:
-                yield ConfigNode(raw).yamlfigns.value
+                yield ConfigNode(raw).yamlfigns.native_value
 
 
 def dump(nodes, output=None, open_mode='w', exclude_metadata=None, **kwargs):
