@@ -143,7 +143,7 @@ class Config(Bunch, metaclass=NamespaceableMeta):
                     to_emit = obj
 
 
-                if isinstance(obj, str) or isinstance(obj, bytes) or isinstance(obj, io.IOBase):
+                if not isinstance(obj, (cabc.Sequence, cabc.Mapping)) or isinstance(obj, (str, bytes, io.IOBase)):
                     finished = True
                     emit = True
                     if isinstance(obj, str) and '\n' in obj:
