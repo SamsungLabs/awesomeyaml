@@ -108,6 +108,14 @@ class EvalContext(metaclass=NamespaceableMeta):
                 if name not in self.ecfg:
                     yield name, child
 
+    def get_evaluated_node(self, nodepath):
+        nodepath = ComposedNode.get_list_path(nodepath, check_types=False) or NodePath()
+        node = self.yamlfigns.get_node(nodepath)
+        if str(nodepath) in self._eval_paths:
+            return node
+
+        return self.evaluate_node(node, prefix=nodepath)
+
     def evaluate_node(self, cfgobj, prefix=None):
         if not isinstance(cfgobj, ConfigNode):
             return cfgobj

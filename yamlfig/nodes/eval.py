@@ -2,6 +2,7 @@ from .scalar import ConfigScalar
 from .node import ConfigNode
 from ..namespace import namespace, staticproperty
 from ..errors import EvalError
+from ..utils import Bunch
 
 import os
 import sys
@@ -54,7 +55,11 @@ class EvalNode(ConfigScalar(str)):
         code_hash = hashlib.md5(str(self).encode('utf-8')).hexdigest()
         eval_module_name = f'{EvalNode._top_namespace_module_name}.{str(path).replace(".", "_")}_0x{code_hash}'
 
-        gbls = copy.copy(ctx.get_eval_symbols())
+        gbls = { 'yamlfigns': Bunch({
+                'ctx': ctx
+            })
+        }
+        gbls.update(copy.copy(ctx.get_eval_symbols()))
         gbls.update(dict(ctx.yamlfigns.named_children()))
         gbls.update({ '__name__': eval_module_name, '__file__': self._source_file })
 
