@@ -79,7 +79,7 @@ class EvalNode(ConfigScalar(str)):
 
         if isinstance(ret, ConfigNode):
             assert ret is not self
-            ret = ret.on_evaluate(path, ctx)
+            ret = ret.yamlfigns.on_evaluate(path, ctx)
         return ret
 
     @namespace('yamlfigns')
