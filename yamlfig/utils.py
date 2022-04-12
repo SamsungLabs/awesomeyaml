@@ -139,6 +139,32 @@ def import_name(symbol_name):
     elements = symbol_name.split('.')
     current = None
     try_import = True
+    exceptions = []
+
+    def _build_import_exception(symbol, last, excs):
+        flat_excs = []
+        for e in excs:
+            this_ex_chain = []
+            while e is not None:
+                this_ex_chain.insert(0, e)
+                e = getattr(e, '__cause__', None)
+
+            flat_excs.extend(this_ex_chain)
+
+        ex = None
+        for e in flat_excs:
+            if ex is not None:
+                e.__cause__ = ex
+            ex = e
+
+        if ex is not None:
+            import traceback
+            ex = ''.join(traceback.format_exception(type(ex), ex, ex.__traceback__))
+        else:
+            ex = '<No information>'
+
+        return ImportError(f'Cannot find an entity named: {symbol!r}, last found element was: {last}, see exception(s) below for potential reasons what could have gone wrong:\n\n{ex}')
+
     for element in elements:
         if try_import:
             import importlib
@@ -146,30 +172,35 @@ def import_name(symbol_name):
                 try:
                     current = importlib.import_module('.' + element, package=current.__name__)
                     continue
-                except ImportError:
+                except ImportError as e:
+                    exceptions.append(e)
                     try_import = False
             else:
                 try:
                     current = importlib.import_module(element)
                     continue
-                except ImportError:
+                except ImportError as e:
+                    exceptions.append(e)
                     try_import = False
 
-        try:
-            current = getattr(current, element)
-            continue
-        except AttributeError:
-            pass
+        if current is not None:
+            try:
+                current = getattr(current, element)
+                continue
+            except AttributeError as e:
+                exceptions.append(e)
+                pass
 
-        if current is None:
+        if current is None and len(elements) == 1:
             import builtins
             try:
                 current = getattr(builtins, element)
                 continue
-            except AttributeError:
+            except AttributeError as e:
+                exceptions.append(e)
                 pass
 
-        raise ImportError(f'Cannot find an entity named: {symbol_name!r}, last found element was: {current}')
+        raise _build_import_exception(symbol_name, current, exceptions)
 
     return current
 
