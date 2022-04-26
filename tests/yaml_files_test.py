@@ -66,12 +66,13 @@ _yaml_test_file_suffix = '_test.yaml'
 curr_dir = Path(__file__).parent
 yaml_files_dir = curr_dir.joinpath(_yaml_files_dir_rel)
 for file in yaml_files_dir.glob("**/*" + _yaml_test_file_suffix):
-    class_arg = str(file.relative_to(yaml_files_dir).with_suffix('')) #.replace(os.path.sep, '.')
+    class_arg = str(file.relative_to(yaml_files_dir).with_suffix('')).replace(os.path.sep, '__')
     try:
         test_case_type = YamlFileTest.make_test_case_type(test_file=str(file), class_arg=class_arg)
         globals()[test_case_type.__name__] = test_case_type
         del test_case_type
     except Exception as e:
+        full_path = str(file.absolute())
         print(f'Yaml test file {os.path.relpath(full_path, curr_dir)!r} will be ignored due to the following error: {e}')
 
 
