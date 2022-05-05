@@ -32,6 +32,9 @@ class AppendNode(ConfigList):
 
     @namespace('yamlfigns')
     def on_premerge(self, path, into):
+        if into is None:
+            return ConfigList(self)
+
         node = into.yamlfigns.remove_node(path)
         if node is None:
             raise KeyError(f'Node {str(self)!r} does not exist in the previous context (possibly deleted?) - while processing a {type(self).__name__!r} node at {path!r}')
