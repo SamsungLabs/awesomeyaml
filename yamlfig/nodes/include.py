@@ -105,7 +105,7 @@ class IncludeNode(ConfigNode):
                 missing.append(filename)
 
         if missing:
-            raise FileNotFoundError({ 'missing': missing, 'lookup_dirs': list(subbuilder.get_lookup_dirs(self._source_file)) })
+            raise FileNotFoundError({ 'missing': missing, 'lookup_dirs': list(subbuilder.get_lookup_dirs(self._source_file)), 'source': self._source_file })
 
         return subbuilder.build().yamlfigns.on_preprocess(path, builder)
 
