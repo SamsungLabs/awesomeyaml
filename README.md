@@ -1,7 +1,5 @@
 # yamlfig
 
-[![CircleCI](https://circleci.sec.samsung.net/gh/SAIC-Cambridge/yamlfig.svg?style=svg)](https://circleci.sec.samsung.net/gh/SAIC-Cambridge/yamlfig)
-
 Yamlfig is a Python-based library which extends standard yaml with a set of custom tags and a processing pipeline designed to make the process of building and manipulating yaml-based config files easier (yamlfig == **YAML**-based con**FIG**).
 We use a popular [pyyaml](https://pypi.org/project/PyYAML/) package as the core component to read and write yaml files.
 
@@ -26,6 +24,9 @@ We use a popular [pyyaml](https://pypi.org/project/PyYAML/) package as the core 
      - [Command line](#Handling-command-line-arguments)
      - [Accessing data](#Accessing-evaluated-fields)
    - [Tags summary](#Summary-of-extended-tags)
+ - [Contributing](#contributing)
+ - [Reporting issues](#reporting-issues)
+ - [License](#license)
 
 ## Capabilities
 
@@ -553,3 +554,24 @@ In either case, more information can always be found in the provided link to doc
 | `!force` | Changes a node's priority to high | [Merging]() |
 | `!del` | Replaces the content of a matching node on merge | [Merging]() |
 | `!merge` | Merges the content of a matching node on merge | [Merging]() |
+
+
+## Contributing
+
+All contributions are welcome, please open a pull request with your changes!
+
+If a substantial change is accepted and merged into the codebase the author might be asked to own contributed pieces of code and become responsible for reviewing/maintaining those parts.
+Lack of commitment to fulfil this obligation might result in reverting any changes, arbitrary changes of ownership, or any other actions deemed necessary to allow for healthy development of the package.
+
+When making your changes, please follow the coding style used throughout the project (PEP-8).
+
+
+## Reporting issues
+
+Please open an issue on GitHub and provide minimal failing example, together with information about the specific version of the package (ideally git commit), Python version, pyyaml version, libyaml version (if used), and OS used.
+
+
+## License
+
+The package is released under Apache License 2.0.
+See LICENSE file for more information.

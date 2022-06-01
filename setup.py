@@ -1,5 +1,19 @@
 #!/usr/bin/env python
 
+# Copyright 2022 Samsung Electronics Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from setuptools import setup, find_packages
 from setuptools.command.build_py import build_py
 
@@ -20,15 +34,22 @@ class build_maybe_inplace(build_py):
         _dist_file.write_text('\n'.join(map(lambda attr_name: attr_name+' = '+repr(getattr(package_version, attr_name)), package_version.__all__)) + '\n')
         return super().run()
 
+with Path(__file__).parent.joinpath('README.md').open('r') as f:
+    long_desc = f.read()
 
-setup(name='YamlFig',
+setup(name=package_name,
       version=package_version.version,
-      description='Config-building Utilities Using YAML',
-      author='Łukasz Dudziak (SAIC-Cambridge, On-Device Team)',
+      description='Config-building utilities using YAML',
+      author='Łukasz Dudziak',
       author_email='l.dudziak@samsung.com',
-      url='https://github.sec.samsung.net/l-dudziak/yamlfig',
-      download_url='https://github.sec.samsung.net/l-dudziak/yamlfig',
+      url='https://github.com/SamsungLabs/pyworkers',
+      download_url='https://github.com/SamsungLabs/pyworkers',
+      long_description=long_desc,
+      long_description_content_type='text/markdown',
       python_requires='>=3.6.0',
+      setup_requires=[
+          'GitPython'
+      ],
       install_requires=[
           'pyyaml'
       ],

@@ -1,10 +1,24 @@
+# Copyright 2022 Samsung Electronics Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import yaml
 import re
 import token
 import pickle
 import tokenize
 import contextlib
-import collections
+import collections.abc as cabc
 
 from .nodes.node import ConfigNode
 from .nodes.composed import ComposedNode
@@ -419,18 +433,18 @@ def _node_representer(dumper, node):
         if not tag and not isinstance(data, ConfigNode):
             return dumper.represent_data(data)
 
-        if isinstance(data, collections.Mapping):
+        if isinstance(data, cabc.Mapping):
             if tag:
                 return dumper.represent_mapping(tag, data)
             else:
                 data = dict(data)
                 return dumper.represent_data(data)
 
-        elif isinstance(data, collections.Sequence) and not isinstance(data, str) and not isinstance(data, bytes):
+        elif isinstance(data, cabc.Sequence) and not isinstance(data, str) and not isinstance(data, bytes):
             if tag:
                 return dumper.represent_sequence(tag, data)
             else:
-                if isinstance(data, collections.MutableSequence):
+                if isinstance(data, cabc.MutableSequence):
                     data = list(data)
                 else:
                     data = tuple(data)

@@ -1,7 +1,21 @@
+# Copyright 2022 Samsung Electronics Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import copy
 import threading
 import contextlib
-import collections
+import collections.abc as cabc
 
 from ..namespace import NamespaceableMeta, Namespace, staticproperty
 from ..utils import persistent_id
@@ -33,12 +47,12 @@ class ConfigNodeMeta(NamespaceableMeta):
                 from .tuple import ConfigTuple
                 from .scalar import ConfigScalar
 
-                if isinstance(value, collections.Sequence) and not isinstance(value, str) and not isinstance(value, bytes):
-                    if isinstance(value, collections.MutableSequence):
+                if isinstance(value, cabc.Sequence) and not isinstance(value, str) and not isinstance(value, bytes):
+                    if isinstance(value, cabc.MutableSequence):
                         t = ConfigList
                     else:
                         t = ConfigTuple
-                elif isinstance(value, collections.MutableMapping):
+                elif isinstance(value, cabc.MutableMapping):
                     t = ConfigDict
                 else:
                     t = ConfigScalar

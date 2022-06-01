@@ -1,5 +1,19 @@
+# Copyright 2022 Samsung Electronics Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import re
-import collections
+import collections.abc as cabc
 
 from .node import ConfigNode
 from ..namespace import Namespace, staticproperty
@@ -86,7 +100,7 @@ class ComposedNode(ConfigNode):
 
         if path is None:
             return NodePath()
-        if not isinstance(path, collections.Sequence) or isinstance(path, str):
+        if not isinstance(path, cabc.Sequence) or isinstance(path, str):
             # split_path should only return str and ints so we don't need to check for types
             path = ComposedNode.split_path(str(path))
         elif check_types:
@@ -108,7 +122,7 @@ class ComposedNode(ConfigNode):
             return ''
         if isinstance(path, int):
             return ComposedNode._get_child_accessor(path)
-        if isinstance(path, collections.Sequence) and not isinstance(path, str):
+        if isinstance(path, cabc.Sequence) and not isinstance(path, str):
             return ComposedNode.join_path(path)
 
         if check_types and not isinstance(path, str):
