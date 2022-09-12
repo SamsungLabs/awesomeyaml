@@ -5,7 +5,7 @@ Welcome to Yamlfig's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   yamlfig.rst
+   awesomeyaml.rst
 
 
 Indices and tables

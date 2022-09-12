@@ -106,9 +106,9 @@ class PathNode(ConfigList):
         if not self._ref_point_parsed:
             raise ValueError(f'Unknown reference point provided for a PathNode: {ref_point!r}.')
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def on_evaluate(self, path, ctx):
-        args = ConfigList.yamlfigns.on_evaluate(self, path, ctx)
+        args = ConfigList.ayns.on_evaluate(self, path, ctx)
         ref_point, ref_point_args = self._ref_point_parsed
         if ref_point == '':
             ret = pathlib.Path('.').joinpath(*args)
@@ -133,14 +133,14 @@ class PathNode(ConfigList):
         return ret
 
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     @property
     def tag(self):
         if not self.ref_point:
             return '!path'
         return '!path:' + self.ref_point
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     @property
     def value(self):
         return {

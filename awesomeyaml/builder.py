@@ -122,7 +122,7 @@ class Builder():
             by ``source`` and ``raw_yaml`` arguments.
 
             Args:
-                source : either a string or a file object. If it's a file object, it will be passed directly to the :py:func:`yamlfig.yaml.parse`,
+                source : either a string or a file object. If it's a file object, it will be passed directly to the :py:func:`awesomeyaml.yaml.parse`,
                            otherwise it will be treated either as a filename or yaml to be parsed, according to ``raw_yaml``.
                 raw_yaml : controls how ``source`` is interpreted if it is passed as string, possible cases are:
 
@@ -131,7 +131,7 @@ class Builder():
                               and in case ``FileNotFoundError`` is raised it will fallback to the case when ``raw_yaml`` is set to ``True``.
                             - if ``bool(raw_yaml)`` evaluates to ``False`` and is not ``None``, the function will attempt to open and read content of a file named ``source``,
                               raising an error if such a file does not exist
-                            - if ``bool(raw_yaml)`` evaluates to ``True``, ``source`` is treated as a yaml string and passed directly to the :py:func:`yamlfig.yaml.parse`
+                            - if ``bool(raw_yaml)`` evaluates to ``True``, ``source`` is treated as a yaml string and passed directly to the :py:func:`awesomeyaml.yaml.parse`
 
             Returns:
                 ``None``
@@ -168,11 +168,11 @@ class Builder():
 
     def build(self):
         ''' Preprocesses all stages and merges them to construct a single config node.
-            This node is suitable to be passed to :py:class:`yamlfig.eval_context.EvalContext`
+            This node is suitable to be passed to :py:class:`awesomeyaml.eval_context.EvalContext`
             in order to be evaluated.
 
             Returns:
-                A py:class:`yamlfig.nodes.ConfigDict` node representing merged config.
+                A py:class:`awesomeyaml.nodes.ConfigDict` node representing merged config.
         '''
         if not self.stages:
             return None
@@ -192,7 +192,7 @@ class Builder():
 
             Internally, this is achieved by triggering ``on_preprocess`` on all nodes within the stage.
             The bahaviour of ``on_preprocess`` will obviously vary from node to node, but as a representative
-            example :py:class:`yamlfig.nodes.include.IncludeNode` can be used. An include node is used to trigger
+            example :py:class:`awesomeyaml.nodes.include.IncludeNode` can be used. An include node is used to trigger
             inclusion of another yaml file into the stage (which might also have include nodes, in which
             case they will be preprocessed recursively). Whereas they don't necessarily require other
             nodes to be preprocessed, there are a couple of reasons they are not resolved within the yaml
@@ -216,7 +216,7 @@ class Builder():
             _i = i
             with self.current_stage(i):
                 stage = self.stages[i]
-                new_stage = stage.yamlfigns.preprocess(self)
+                new_stage = stage.ayns.preprocess(self)
 
                 if new_stage is not stage:
                     try:
@@ -241,7 +241,7 @@ class Builder():
             if not isinstance(stage, dict):
                 raise ValueError('Not all stages are dictionaries')
 
-        new_stage = self.stages[0].yamlfigns.premerge(None)
+        new_stage = self.stages[0].ayns.premerge(None)
         if new_stage is not self.stages[0]:
             try:
                 self.stages[0:1] = new_stage.stages
@@ -252,7 +252,7 @@ class Builder():
             return
 
         for i in range(1, len(self.stages)):
-            self.stages[0].yamlfigns.merge(self.stages[i])
+            self.stages[0].ayns.merge(self.stages[i])
 
         self.stages = [self.stages[0]]
 
@@ -282,7 +282,7 @@ class Builder():
                 requester : a path of the node which requests the subbuilder (mostly used for debugging)
 
             Returns:
-                A :py:class:`yamlfig.builder.SubBuilder` object who parent is this builder.
+                A :py:class:`awesomeyaml.builder.SubBuilder` object who parent is this builder.
         '''
         if self._current_stage is None:
             raise RuntimeError('SubBuilder requested when not processing any stage!')
@@ -300,7 +300,7 @@ class SubBuilder(Builder):
 
         Calling :py:meth:`build` on a subbuilder will trigger preprocessing but not flattening as this
         should be handled later when the parent enter its flattening step. Instead, a single
-        :py:class:`yamlfig.nodes.stream.StreamNode` is created representing a list of stages which
+        :py:class:`awesomeyaml.nodes.stream.StreamNode` is created representing a list of stages which
         should be flattened later. When flattening, the stream node will be replaced with the result
         of flattening its list of stages.
     '''
@@ -321,7 +321,7 @@ class SubBuilder(Builder):
             Intended for recursive preprocessing.
 
             Returns:
-                A :py:class:`yamlfig.nodes.stream.StreamNode` holding a list of preprocessed stages.
+                A :py:class:`awesomeyaml.nodes.stream.StreamNode` holding a list of preprocessed stages.
                 The stages attached to it will be flatten with the parent stage of the stream
                 node.
         '''

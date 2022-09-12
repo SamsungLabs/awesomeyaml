@@ -53,19 +53,19 @@ class ConfigTuple(ComposedNode, tuple):
     def __getitem__(self, index):
         return self._get(index, raise_ex=True)
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def set_child(self, index, value):
         raise TypeError('tuple does not support item assignment')
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def remove_child(self, index):
         raise TypeError('tuple does not support item deletion')
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def get_child(self, index, default=None):
         return self._get(index, default=default, raise_ex=False)
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def map_nodes(self, map_fn):
         raw = tuple(map(map_fn, self))
         return ConfigTuple(raw)
@@ -74,7 +74,7 @@ class ConfigTuple(ComposedNode, tuple):
         return tuple.__contains__(self, value)
 
     def __repr__(self, simple=False):
-        tuple_repr = '(' + ', '.join([c.__repr__(simple=True) for c in self.yamlfigns.children()]) + ')' # pylint: disable=no-value-for-parameter
+        tuple_repr = '(' + ', '.join([c.__repr__(simple=True) for c in self.ayns.children()]) + ')' # pylint: disable=no-value-for-parameter
         if simple:
             return type(self).__name__ + tuple_repr
 

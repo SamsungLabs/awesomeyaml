@@ -18,5 +18,5 @@ help:
 # Catch-all target: route all unknown targets to Sphinx using the new
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
 %: Makefile
-	@$(SPHINXAPIDOC) -eTfo "$(SOURCEDIR)" ../yamlfig/
+	@$(SPHINXAPIDOC) -eTfo "$(SOURCEDIR)" ../awesomeyaml/
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)

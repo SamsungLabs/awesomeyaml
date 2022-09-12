@@ -29,12 +29,12 @@ class ConfigDict(ComposedNode, dict):
     def _set(self, name, value):
         if name in dir(type(self)):
             raise ValueError(f'Cannot add a child node with name {name!r} as it would shadow a class method/attribute: {getattr(type(self), name)}')
-        value = ComposedNode.yamlfigns.set_child(self, name, value)
+        value = ComposedNode.ayns.set_child(self, name, value)
         dict.__setitem__(self, name, value)
         return value
 
     def _del(self, name):
-        ret = ComposedNode.yamlfigns.remove_child(self, name)
+        ret = ComposedNode.ayns.remove_child(self, name)
         dict.__delitem__(self, name)
         return ret
 
@@ -45,10 +45,10 @@ class ConfigDict(ComposedNode, dict):
         return self._set(name, value)
 
     def __getattr__(self, name):
-        if not ComposedNode.yamlfigns.has_child(self, name):
+        if not ComposedNode.ayns.has_child(self, name):
             raise AttributeError(f'Object {type(self).__name__!r} does not have attribute {name!r}')
 
-        return ComposedNode.yamlfigns.get_child(self, name)
+        return ComposedNode.ayns.get_child(self, name)
 
     def __delattr__(self, name):
         if name.startswith('_'):
@@ -69,18 +69,18 @@ class ConfigDict(ComposedNode, dict):
         self._del(name)
 
     def __contains__(self, name):
-        return self.yamlfigns.has_child(name) # pylint: disable=no-value-for-parameter
+        return self.ayns.has_child(name) # pylint: disable=no-value-for-parameter
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def set_child(self, name, value):
         self._set(name, value)
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def remove_child(self, name):
         return self._del(name)
 
     def clear(self):
-        ComposedNode.yamlfigns.clear(self)
+        ComposedNode.ayns.clear(self)
         dict.clear(self)
 
     def setdefault(self, key, value):
@@ -90,30 +90,30 @@ class ConfigDict(ComposedNode, dict):
 
     def pop(self, k, *d):
         val = dict.pop(self, k, *d)
-        if self.yamlfigns.has_child(k): # pylint: disable=no-value-for-parameter
-            ComposedNode.yamlfigns.remove_child(self, k)
+        if self.ayns.has_child(k): # pylint: disable=no-value-for-parameter
+            ComposedNode.ayns.remove_child(self, k)
         return val
 
     def popitem(self, k, d=None):
         val = dict.popitem(self, k, d=d)
         if self.has_child(k):
-            ComposedNode.yamlfigns.remove_child(self, k)
+            ComposedNode.ayns.remove_child(self, k)
             #val.set_parent(None, None)
         return val
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def merge(self, other):
         if not isinstance(other, dict) and not isinstance(other, cabc.Sequence):
             raise TypeError('Dict or sequence expected')
 
-        return super().yamlfigns.merge(other)
+        return super().ayns.merge(other)
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def on_evaluate(self, path, ctx):
-        return Bunch((key, ctx.evaluate_node(value, path+[key])) for key, value in self.yamlfigns.named_children())
+        return Bunch((key, ctx.evaluate_node(value, path+[key])) for key, value in self.ayns.named_children())
 
     def __repr__(self, simple=False):
-        dict_repr = '{' + ', '.join([f'{n!r}: {c.__repr__(simple=True)}' for n, c in self.yamlfigns.named_children()]) + '}' # pylint: disable=no-value-for-parameter
+        dict_repr = '{' + ', '.join([f'{n!r}: {c.__repr__(simple=True)}' for n, c in self.ayns.named_children()]) + '}' # pylint: disable=no-value-for-parameter
         if simple:
             return type(self).__name__ + dict_repr
 
@@ -131,9 +131,9 @@ class ConfigDict(ComposedNode, dict):
         return self
 
     def _get_native_value(self):
-        return dict((k,v.yamlfigns.native_value) for k,v in self.items())
+        return dict((k,v.ayns.native_value) for k,v in self.items())
 
     def _set_value(self, other):
         self.clear()
         for name, child in other.items():
-            self.yamlfigns.set_child(name, child) # pylint: disable=no-value-for-parameter
+            self.ayns.set_child(name, child) # pylint: disable=no-value-for-parameter

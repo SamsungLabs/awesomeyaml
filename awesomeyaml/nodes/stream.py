@@ -27,14 +27,14 @@ class StreamNode(ConfigList):
     def stages(self):
         return self.builder.stages
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def on_premerge(self, path, into):
         self.clear()
         self.builder.flatten()
         self.append(self.builder.stages[0])
-        return self.builder.stages[0].yamlfigns.on_premerge(path, into)
+        return self.builder.stages[0].ayns.on_premerge(path, into)
 
-    #@namespace('yamlfigns')
+    #@namespace('ayns')
     #@staticproperty
     #@staticmethod
     #def is_leaf():

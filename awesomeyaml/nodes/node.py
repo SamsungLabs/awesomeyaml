@@ -127,7 +127,7 @@ class ConfigNode(metaclass=ConfigNodeMeta):
     def __repr__(self, simple=False):
         return f'<Object {type(self).__name__!r} at 0x{id(self):02x}>'
 
-    class yamlfigns(Namespace):
+    class ayns(Namespace):
         @property
         def idx(self):
             return self._idx
@@ -141,11 +141,11 @@ class ConfigNode(metaclass=ConfigNodeMeta):
 
         @property
         def weak(self):
-            return self.yamlfigns.merge_mode == ConfigNode.WEAK
+            return self.ayns.merge_mode == ConfigNode.WEAK
 
         @property
         def force(self):
-            return self.yamlfigns.merge_mode == ConfigNode.FORCE
+            return self.ayns.merge_mode == ConfigNode.FORCE
 
         @property
         def delete(self):
@@ -198,33 +198,33 @@ class ConfigNode(metaclass=ConfigNodeMeta):
             return None
 
         def has_priority_over(self, other, if_equal=False):
-            if self.yamlfigns.merge_mode == other.yamlfigns.merge_mode:
+            if self.ayns.merge_mode == other.ayns.merge_mode:
                 return if_equal
-            return self.yamlfigns.merge_mode > other.yamlfigns.merge_mode
+            return self.ayns.merge_mode > other.ayns.merge_mode
 
         def preprocess(self, builder):
-            return self.yamlfigns.on_preprocess([], builder)
+            return self.ayns.on_preprocess([], builder)
 
         def on_preprocess(self, path, builder):
             return self
 
         def premerge(self, into=None):
-            return self.yamlfigns.on_premerge([], into)
+            return self.ayns.on_premerge([], into)
 
         def on_premerge(self, path, into):
             return self
 
         def evaluate(self):
-            return self.yamlfigns.evaluate_node([], self)
+            return self.ayns.evaluate_node([], self)
 
         def evaluate_node(self, path, root):
-            evaluated = self.yamlfigns.on_evaluate(path, root)
+            evaluated = self.ayns.on_evaluate(path, root)
             assert evaluated is not self
             assert not isinstance(evaluated, ConfigNode)
             return evaluated
 
         def on_evaluate(self, path, ctx):
-            return self.yamlfigns.value
+            return self.ayns.value
 
         def get_node_info_to_save(self):
             ''' This function should return a dict with values which one wants to preserve when dumping the node.
@@ -262,4 +262,4 @@ class ConfigNode(metaclass=ConfigNodeMeta):
                 and ``data`` is object which will be used to recursively represent ``self`` (can be either
                 mapping, sequence or scalar).
             '''
-            return self.yamlfigns.tag, self.yamlfigns.get_node_info_to_save(), self.yamlfigns.value
+            return self.ayns.tag, self.ayns.get_node_info_to_save(), self.ayns.value

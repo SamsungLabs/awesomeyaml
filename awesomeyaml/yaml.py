@@ -34,7 +34,7 @@ _global_ctx = None
 def global_ctx(filename):
     global _global_ctx
     if _global_ctx is None:
-        import yamlfig.builder as b
+        import awesomeyaml.builder as b
         _global_ctx = b.Builder()
 
     _global_ctx._current_file = filename
@@ -259,7 +259,7 @@ def _fstr_constructor(loader, node):
 
 def _import_constructor(loader, node):
     import importlib
-    module = importlib.import_module('.nodes.import', package='yamlfig') # dirty hack because "import" is a keyword
+    module = importlib.import_module('.nodes.import', package='awesomeyaml') # dirty hack because "import" is a keyword
     ImportNode = module.ImportNode
     return _make_node(loader, node, node_type=ImportNode)
 
@@ -365,13 +365,13 @@ yaml.add_constructor('!path', _simple_path_constructor)
 
 def _node_representer(dumper, node):
     from .nodes.bind import BindNode
-    tag, metadata, data = node.yamlfigns.represent()
+    tag, metadata, data = node.ayns.represent()
     if data is None:
         assert not tag
         tag = '!null'
 
     parent_metadata = dumper.metadata[-1] if dumper.metadata else {}
-    type_defaults = node.yamlfigns.get_default_mode()
+    type_defaults = node.ayns.get_default_mode()
 
     tags_to_infer = {
         'merge_mode': {
@@ -567,7 +567,7 @@ def parse(data, filename_or_builder=None, config_nodes=True):
             if config_nodes:
                 yield ConfigNode(raw)
             else:
-                yield ConfigNode(raw).yamlfigns.native_value
+                yield ConfigNode(raw).ayns.native_value
 
 
 def dump(nodes, output=None, open_mode='w', exclude_metadata=None, **kwargs):

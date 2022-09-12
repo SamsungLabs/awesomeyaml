@@ -147,7 +147,7 @@ class ComposedNode(ConfigNode):
         nodes_memo = nodes_memo if nodes_memo is not None else {}
         self._children = { name: ConfigNode(child, **kwargs, nodes_memo=nodes_memo) for name, child in children.items() } # pylint: disable=unexpected-keyword-arg
 
-    class yamlfigns(Namespace):
+    class ayns(Namespace):
         def set_child(self, name, value):
             value = ConfigNode(value)
             self._children[name] = value
@@ -158,9 +158,9 @@ class ComposedNode(ConfigNode):
             return child
 
         def rename_child(self, old_name, new_name):
-            if not self.yamlfigns.has_child(old_name):
+            if not self.ayns.has_child(old_name):
                 raise ValueError(f'{self!r} does not have a child named: {old_name!r}')
-            if self.yamlfigns.has_child(new_name):
+            if self.ayns.has_child(new_name):
                 raise ValueError(f'Cannot rename a child named: {old_name!r} to {new_name!r}, the new name is already assigned to another child')
 
             child = self._children[old_name]
@@ -194,12 +194,12 @@ class ComposedNode(ConfigNode):
             node = root
             found = True
             for component in path:
-                if not query_fn(node, component): #not isinstance(node, ComposedNode) or not node.yamlfigns.has_child(component):
+                if not query_fn(node, component): #not isinstance(node, ComposedNode) or not node.ayns.has_child(component):
                     _add(None, component)
                     found = False
                     break
 
-                #node = node.yamlfigns.get_child(component)
+                #node = node.ayns.get_child(component)
                 node = access_fn(node, component)
                 _add(node, component)
 
@@ -213,7 +213,7 @@ class ComposedNode(ConfigNode):
 
         @staticmethod
         def _remove_node(root, remove_fn, *path):
-            nodes = root.yamlfigns.get_node(*path, intermediate=True, names=True, incomplete=None)
+            nodes = root.ayns.get_node(*path, intermediate=True, names=True, incomplete=None)
             if nodes is None:
                 return None
             if len(nodes) == 1:
@@ -246,18 +246,18 @@ class ComposedNode(ConfigNode):
                     `KeyError` if node cannot be found and `incomplete` evaluates to False and is not None
             '''
             def access_fn(node, component):
-                return node.yamlfigns.get_child(component)
+                return node.ayns.get_child(component)
             def query_fn(node, component):
                 if not isinstance(node, ComposedNode):
                     return False
-                return node.yamlfigns.has_child(component)
+                return node.ayns.has_child(component)
 
-            return ComposedNode.yamlfigns._get_node(self, access_fn, query_fn, *path, intermediate=intermediate, names=names, incomplete=incomplete)
+            return ComposedNode.ayns._get_node(self, access_fn, query_fn, *path, intermediate=intermediate, names=names, incomplete=incomplete)
 
         def get_first_not_missing_node(self, *path, intermediate=False, names=False):
             def _get_node(n):
                 return n if not names else n[0]
-            nodes = self.yamlfigns.get_node(*path, intermediate=True, names=names, incomplete=True)
+            nodes = self.ayns.get_node(*path, intermediate=True, names=names, incomplete=True)
             assert len(nodes) >= 2 or nodes[-1] is self
             if _get_node(nodes[-1]) is not None:
                 return nodes[-1] if not intermediate else nodes
@@ -268,9 +268,9 @@ class ComposedNode(ConfigNode):
 
         def remove_node(self, *path):
             def remove_fn(node, component):
-                return node.yamlfigns.remove_child(component)
+                return node.ayns.remove_child(component)
 
-            return ComposedNode.yamlfigns._remove_node(self, remove_fn, *path)
+            return ComposedNode.ayns._remove_node(self, remove_fn, *path)
 
         def replace_node(self, new_node, *path):
             raise NotImplementedError()
@@ -279,13 +279,13 @@ class ComposedNode(ConfigNode):
             prefix = ComposedNode.get_list_path(prefix, check_types=False) or NodePath()
             to_del = []
             to_re_set = []
-            for name, child in self.yamlfigns.named_children():
+            for name, child in self.ayns.named_children():
                 child_path = prefix + [name]
                 keep = False
                 if condition(child_path, child):
                     keep = True
-                if isinstance(child, ComposedNode): #not child.yamlfigns.is_leaf:
-                    possibly_new_child = child.yamlfigns.filter_nodes(condition, prefix=child_path)
+                if isinstance(child, ComposedNode): #not child.ayns.is_leaf:
+                    possibly_new_child = child.ayns.filter_nodes(condition, prefix=child_path)
                     keep = keep and bool(possibly_new_child)
                     if keep and possibly_new_child is not child:
                         to_re_set.append(name, possibly_new_child)
@@ -294,9 +294,9 @@ class ComposedNode(ConfigNode):
                     to_del.append(name)
 
             for name in reversed(to_del):
-                self.yamlfigns.remove_child(name)
+                self.ayns.remove_child(name)
             for name, child in to_re_set:
-                self.yamlfigns.set_child(name, child)
+                self.ayns.set_child(name, child)
 
             return self
 
@@ -306,14 +306,14 @@ class ComposedNode(ConfigNode):
             if cache_results and cache is None:
                 cache = {}
 
-            for name, child in self.yamlfigns.named_children():
+            for name, child in self.ayns.named_children():
                 if cache_results and id(child) in cache:
                     possibly_new_child = cache[id(child)]
                 else:
                     child_path = prefix + [name]
                     possibly_new_child = child
-                    if isinstance(child, ComposedNode): #not child.yamlfigns.is_leaf:
-                        possibly_new_child = possibly_new_child.yamlfigns.map_nodes(map_fn, prefix=child_path, cache_results=cache_results, cache=cache, leafs_only=leafs_only)
+                    if isinstance(child, ComposedNode): #not child.ayns.is_leaf:
+                        possibly_new_child = possibly_new_child.ayns.map_nodes(map_fn, prefix=child_path, cache_results=cache_results, cache=cache, leafs_only=leafs_only)
                         #if not leafs_only:
                         #    possibly_new_child = map_fn(child_path, possibly_new_child)
                     else:
@@ -327,7 +327,7 @@ class ComposedNode(ConfigNode):
                     cache[persistent_id(child)] = possibly_new_child
 
             for name, child in to_re_set:
-                self.yamlfigns.set_child(name, child)
+                self.ayns.set_child(name, child)
 
             ret = self
             if not leafs_only:
@@ -350,18 +350,18 @@ class ComposedNode(ConfigNode):
                     memo.add(id(child))
                     yield child_path, child
                 else:
-                    for path, node in child.yamlfigns.nodes_with_paths(prefix=child_path, recursive=recursive, include_self=True):
+                    for path, node in child.ayns.nodes_with_paths(prefix=child_path, recursive=recursive, include_self=True):
                         if id(node) in memo and not allow_duplicates:
                             continue
                         memo.add(id(node))
                         yield path, node
 
         def nodes(self, recursive=True, include_self=False, allow_duplicates=False):
-            for _, node in self.yamlfigns.nodes_with_paths(recursive=recursive, include_self=include_self, allow_duplicates=allow_duplicates):
+            for _, node in self.ayns.nodes_with_paths(recursive=recursive, include_self=include_self, allow_duplicates=allow_duplicates):
                 yield node
 
         def nodes_paths(self, prefix=None, recursive=True, include_self=False):
-            for path, _ in self.yamlfigns.nodes_with_paths(recursive=recursive, include_self=include_self, allow_duplicates=True):
+            for path, _ in self.ayns.nodes_with_paths(recursive=recursive, include_self=include_self, allow_duplicates=True):
                 yield path
 
 
@@ -375,7 +375,7 @@ class ComposedNode(ConfigNode):
                 yield name, child
 
         def children(self, allow_duplicates=True):
-            for _, child in self.yamlfigns.named_children(allow_duplicates=allow_duplicates):
+            for _, child in self.ayns.named_children(allow_duplicates=allow_duplicates):
                 yield child
 
         def children_names(self):
@@ -394,53 +394,53 @@ class ComposedNode(ConfigNode):
         def premerge(self, into=None):
             ''' Called when `self` (top-level) is about to be merged into `into`
             '''
-            return self.yamlfigns.map_nodes(lambda path, node: node.yamlfigns.on_premerge(path, into), cache_results=True, leafs_only=False)
+            return self.ayns.map_nodes(lambda path, node: node.ayns.on_premerge(path, into), cache_results=True, leafs_only=False)
 
         def preprocess(self, builder):
-            return self.yamlfigns.map_nodes(lambda path, node: node.yamlfigns.on_preprocess(path, builder), cache_results=True, leafs_only=False)
+            return self.ayns.map_nodes(lambda path, node: node.ayns.on_preprocess(path, builder), cache_results=True, leafs_only=False)
 
         def evaluate(self):
-            return self.yamlfigns.map_nodes(ConfigNode.yamlfigns.evaluate_node, cache_results=True, leafs_only=False)
+            return self.ayns.map_nodes(ConfigNode.ayns.evaluate_node, cache_results=True, leafs_only=False)
 
         def merge(self, other):
-            other.yamlfigns.premerge(self)
-            if other.yamlfigns.delete:
+            other.ayns.premerge(self)
+            if other.ayns.delete:
                 def maybe_keep(path, node):
-                    other_node = other.yamlfigns.get_first_not_missing_node(path)
-                    return node.yamlfigns.has_priority_over(other_node)
+                    other_node = other.ayns.get_first_not_missing_node(path)
+                    return node.ayns.has_priority_over(other_node)
 
-                self.yamlfigns.filter_nodes(maybe_keep)
-                if not self._children and other.yamlfigns.has_priority_over(self, if_equal=True):
+                self.ayns.filter_nodes(maybe_keep)
+                if not self._children and other.ayns.has_priority_over(self, if_equal=True):
                     return other
 
             for key, value in other._children.items():
-                child = self.yamlfigns.get_child(key, None)
+                child = self.ayns.get_child(key, None)
                 if child is None:
-                    self.yamlfigns.set_child(key, value)
+                    self.ayns.set_child(key, value)
                 else:
                     merge = False
-                    #if not child.yamlfigns.is_leaf: #and type(child) == type(value):
+                    #if not child.ayns.is_leaf: #and type(child) == type(value):
                     try:
-                        possibly_new_child = child.yamlfigns.merge(value)
+                        possibly_new_child = child.ayns.merge(value)
                         merge = True
                     except (TypeError, AttributeError):
                         pass
 
                     if merge:
-                        if not possibly_new_child and not possibly_new_child.yamlfigns.has_priority_over(value):
-                            self.yamlfigns.remove_child(key)
+                        if not possibly_new_child and not possibly_new_child.ayns.has_priority_over(value):
+                            self.ayns.remove_child(key)
                         elif possibly_new_child is not child:
-                            self.yamlfigns.set_child(key, possibly_new_child)
+                            self.ayns.set_child(key, possibly_new_child)
                             possibly_new_child._metadata = { **child._metadata, **possibly_new_child._metadata }
                     else:
-                        if value.yamlfigns.has_priority_over(child, if_equal=True):
-                            if not value and value.yamlfigns.explicit_delete:
-                                self.yamlfigns.remove_child(key)
+                        if value.ayns.has_priority_over(child, if_equal=True):
+                            if not value and value.ayns.explicit_delete:
+                                self.ayns.remove_child(key)
                             else:
-                                self.yamlfigns.set_child(key, value)
+                                self.ayns.set_child(key, value)
                                 value._metadata = { **child._metadata, **value._metadata }
 
-            if other.yamlfigns.has_priority_over(self, if_equal=True):
+            if other.ayns.has_priority_over(self, if_equal=True):
                 self._merge_mode = other._merge_mode
                 self._delete = other._delete
                 self._implicit_delete = other._implicit_delete

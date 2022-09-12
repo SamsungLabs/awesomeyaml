@@ -25,7 +25,7 @@ class CallNode(FunctionNode):
         but instead of evaluating to a ``functools.partial`` it calls the
         target function with provided arguments and returns its result::
 
-            f = import_name(call_node.yamlfigns.func)
+            f = import_name(call_node.ayns.func)
             return f(**call_node)
 
         Please see the BindNode's documentation for more details.
@@ -51,16 +51,16 @@ class CallNode(FunctionNode):
             ==================  ================================================================================================================================
 
     '''
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def on_evaluate(self, path, ctx):
         _func = self._func
         if isinstance(_func, str):
             _func = import_name(_func)
-        args = ConfigDict.yamlfigns.on_evaluate(self, path, ctx)
+        args = ConfigDict.ayns.on_evaluate(self, path, ctx)
         p, kw_p, kw = FunctionNode._resolve_args(_func, args)
         return _func(*p, **kw_p, **kw)
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     @property
     def tag(self):
         _func = self._func

@@ -28,7 +28,7 @@ if errorlevel 9009 (
 	exit /b 1
 )
 
-%SPHINXAPIDOC% -eTfo %SOURCEDIR% ../yamlfig/
+%SPHINXAPIDOC% -eTfo %SOURCEDIR% ../awesomeyaml/
 %SPHINXBUILD% -M %1 %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% %O%
 goto end
 

@@ -160,12 +160,12 @@ class ConfigScalar(ConfigScalarMarker, metaclass=ConfigScalarMeta):
     def _set_value(self, other):
         raise RuntimeError(f'Cannot set value of an immutable config node: {self!r}')
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def named_nodes(self, prefix='', recursive=True, include_self=True, allow_duplicates=True):
         if include_self:
             yield prefix, self
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def on_evaluate(self, path, ctx):
         return self._get_native_value()
 

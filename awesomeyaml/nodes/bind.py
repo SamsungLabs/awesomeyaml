@@ -50,7 +50,7 @@ class BindNode(FunctionNode):
         entity identified by its string part (following semantics expplained
         briefly above). Specifically, the behaviour could be summarized as::
 
-            f = import_name(bind_node.yamlfigns.func)
+            f = import_name(bind_node.ayns.func)
             return functools.partial(f, **bind_node)
 
         Supported syntax::
@@ -75,16 +75,16 @@ class BindNode(FunctionNode):
 
     '''
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def on_evaluate(self, path, ctx):
         _func = self._func
         if isinstance(_func, str):
             _func = import_name(_func)
-        args = ConfigDict.yamlfigns.on_evaluate(self, path, ctx)
+        args = ConfigDict.ayns.on_evaluate(self, path, ctx)
         p, kw_p, kw = FunctionNode._resolve_args(_func, args)
         return partial(_func, *p, **kw_p, **kw)
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     @property
     def tag(self):
         _func = self._func

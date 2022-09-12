@@ -38,14 +38,14 @@ class CreateFromFileTest(unittest.TestCase):
 
     def test_yaml(self):
         import io
-        from yamlfig.config import Config
+        from awesomeyaml.config import Config
         cfg = Config.build(self._file_content)
         self._check_test_obj(cfg)
 
     def test_filename(self):
         import os
         import tempfile
-        from yamlfig.config import Config
+        from awesomeyaml.config import Config
         fp = tempfile.NamedTemporaryFile(mode='w+', delete=False)
         try:
             fp.write(self._file_content)
@@ -58,7 +58,7 @@ class CreateFromFileTest(unittest.TestCase):
 
     def test_fileobj(self):
         import tempfile
-        from yamlfig.config import Config
+        from awesomeyaml.config import Config
         with tempfile.TemporaryFile(mode='w+') as fp:
             fp.write(self._file_content)
             fp.flush()

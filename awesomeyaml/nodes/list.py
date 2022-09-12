@@ -39,13 +39,13 @@ class ConfigList(ComposedNode, list):
     def _set(self, index, value, allow_append=False):
         index = self._validate_index(index, allow_append=allow_append)
         try:
-            value = ComposedNode.yamlfigns.set_child(self, index, value)
+            value = ComposedNode.ayns.set_child(self, index, value)
             if allow_append and index == len(self):
                 list.append(self, value)
             else:
                 list.__setitem__(self, index, value)
         except:
-            ComposedNode.yamlfigns.remove_child(self, index)
+            ComposedNode.ayns.remove_child(self, index)
             raise
 
     def _del(self, index):
@@ -53,7 +53,7 @@ class ConfigList(ComposedNode, list):
         for i in range(index+1, len(self)):
             self[i-1] = self[i]
 
-        ret = ComposedNode.yamlfigns.remove_child(self, len(self) - 1)
+        ret = ComposedNode.ayns.remove_child(self, len(self) - 1)
         list.__delitem__(self, -1)
         return ret
 
@@ -76,15 +76,15 @@ class ConfigList(ComposedNode, list):
     def __getitem__(self, index):
         return self._get(index, raise_ex=True)
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def set_child(self, index, value):
         return self._set(index, value, allow_append=True)
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def remove_child(self, index):
         return self._del(index)
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def get_child(self, index, default=None):
         return self._get(index, default=default, raise_ex=False)
 
@@ -92,14 +92,14 @@ class ConfigList(ComposedNode, list):
         return list.__contains__(self, value)
 
     def append(self, value):
-        value = ComposedNode.yamlfigns.set_child(self, len(self), value)
+        value = ComposedNode.ayns.set_child(self, len(self), value)
         list.append(self, value)
 
     def remove(self, value):
         self._del(self.index(value))
 
     def clear(self):
-        ComposedNode.yamlfigns.clear(self)
+        ComposedNode.ayns.clear(self)
         list.clear(self)
 
     def extend(self, other):
@@ -122,37 +122,37 @@ class ConfigList(ComposedNode, list):
             assert not self._children
             self._children = { idx: child for idx, child in enumerate(self) }
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def merge(self, other):
         if not isinstance(other, ComposedNode):
             raise TypeError('ComposedNode expected')
 
         if isinstance(other, dict):
-            for key in other.yamlfigns.children_names():
+            for key in other.ayns.children_names():
                 self._validate_index(key)
 
         def keep_if_exists(path, node):
-            if not node.yamlfigns.delete:
+            if not node.ayns.delete:
                 return True
-            current = self.yamlfigns.get_first_not_missing_node(path)
-            return node.yamlfigns.has_priority_over(current, if_equal=True)
+            current = self.ayns.get_first_not_missing_node(path)
+            return node.ayns.has_priority_over(current, if_equal=True)
 
-        other.yamlfigns.filter_nodes(keep_if_exists)
+        other.ayns.filter_nodes(keep_if_exists)
 
-        return super().yamlfigns.merge(other)
+        return super().ayns.merge(other)
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def on_evaluate(self, path, ctx):
-        return list(ctx.evaluate_node(value, path+[key]) for key, value in self.yamlfigns.named_children())
+        return list(ctx.evaluate_node(value, path+[key]) for key, value in self.ayns.named_children())
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     @staticproperty
     @staticmethod
     def is_leaf():
         return False
 
     def __repr__(self, simple=False):
-        list_repr = '[' + ', '.join([c.__repr__(simple=True) for c in self.yamlfigns.children()]) + ']' # pylint: disable=no-value-for-parameter
+        list_repr = '[' + ', '.join([c.__repr__(simple=True) for c in self.ayns.children()]) + ']' # pylint: disable=no-value-for-parameter
         if simple:
             return type(self).__name__ + list_repr
 
@@ -166,7 +166,7 @@ class ConfigList(ComposedNode, list):
         return self
 
     def _get_native_value(self):
-        return list(n.yamlfigns.native_value for n in self)
+        return list(n.ayns.native_value for n in self)
 
     def _set_value(self, other):
         self.clear()

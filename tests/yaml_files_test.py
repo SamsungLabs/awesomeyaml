@@ -56,7 +56,7 @@ class YamlFileTest():
             raise ValueError(f'Both expected result and validate code are empty - missing "###EXPECTED" or "###VALIDATE" clause?')
 
     def test(self):
-        from yamlfig.config import Config
+        from awesomeyaml.config import Config
         import yaml
         result = Config.build(self.test_yaml, filename=self.test_file)
         expected = yaml.load(self.expected_result, Loader=yaml.Loader)

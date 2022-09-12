@@ -21,10 +21,10 @@ import copy
 
 
 class EvalContext(metaclass=NamespaceableMeta):
-    ''' A class used to provide evaluation context for a top-level `yamlfig.nodes.ConfigDict`.
-        After the top level node is put within a context, it can be evaluated to create `yamlfig.utils.Bunch`
-        which will hold the evaluation result - evaluated nodes are no longer `yamlfig` nodes and can represent anything.
-        The primary use-case for this class and the resulting `Bunch` object is to construct a `yamlfig.Config` object
+    ''' A class used to provide evaluation context for a top-level `awesomeyaml.nodes.ConfigDict`.
+        After the top level node is put within a context, it can be evaluated to create `awesomeyaml.utils.Bunch`
+        which will hold the evaluation result - evaluated nodes are no longer `awesomeyaml` nodes and can represent anything.
+        The primary use-case for this class and the resulting `Bunch` object is to construct a `awesomeyaml.Config` object
         which basically combines the returned `Bunch` object with the original `ConfigDict`.
     '''
 
@@ -36,7 +36,7 @@ class EvalContext(metaclass=NamespaceableMeta):
 
         def __getitem__(self, key):
             if key not in self:
-                return self._eval_ctx.cfg.yamlfigns.get_node(self._path + [key])
+                return self._eval_ctx.cfg.ayns.get_node(self._path + [key])
 
             return super().__getitem__(key)
 
@@ -64,9 +64,9 @@ class EvalContext(metaclass=NamespaceableMeta):
 
     def __init__(self, config_dict, eval_symbols=None):
         ''' Arguments:
-                config_dict : a `yamlfig.nodes.ConfigDict` object to be evaluated,
+                config_dict : a `awesomeyaml.nodes.ConfigDict` object to be evaluated,
                     to construct a single `ConfigDict` from multiple sources
-                    `yamlfig.builder.Builder` can be used.
+                    `awesomeyaml.builder.Builder` can be used.
                 eval_symbols : a dict containing symbols which can be used when evaluating
                     ``config_dict``. The values from this argument will be used to update
                     the defaults from :py:meth:`get_default_eval_symbols`.
@@ -80,7 +80,7 @@ class EvalContext(metaclass=NamespaceableMeta):
         if eval_symbols:
             self._eval_symbols.update(eval_symbols)
 
-    class yamlfigns(Namespace):
+    class ayns(Namespace):
         def get_node(self, *path, **kwargs):
             def access_fn(node, component):
                 return node[component]
@@ -94,21 +94,21 @@ class EvalContext(metaclass=NamespaceableMeta):
             incomplete = kwargs.get('incomplete', False)
             kwargs['incomplete'] = False
             try:
-                return ComposedNode.yamlfigns._get_node(self.ecfg, access_fn, query_fn, *path, **kwargs)
+                return ComposedNode.ayns._get_node(self.ecfg, access_fn, query_fn, *path, **kwargs)
             except KeyError:
                 kwargs['incomplete'] = incomplete
-                return self.cfg.yamlfigns.get_node(*path, **kwargs)
+                return self.cfg.ayns.get_node(*path, **kwargs)
 
         def remove_node(self, *path):
             def remove_fn(node, component):
                 if isinstance(node, ComposedNode):
-                    return node.yamlfigns.remove_child(component)
+                    return node.ayns.remove_child(component)
                 else:
                     node = node[component]
                     del node[component]
                     return node
 
-            return ComposedNode.yamlfigns._remove_node(self, remove_fn, *path)
+            return ComposedNode.ayns._remove_node(self, remove_fn, *path)
 
         def named_children(self, allow_duplicates=True):
             memo = set()
@@ -118,13 +118,13 @@ class EvalContext(metaclass=NamespaceableMeta):
                         continue
                     memo.add(id(child))
                 yield name, child
-            for name, child in self.cfg.yamlfigns.named_children():
+            for name, child in self.cfg.ayns.named_children():
                 if name not in self.ecfg:
                     yield name, child
 
     def get_evaluated_node(self, nodepath):
         nodepath = ComposedNode.get_list_path(nodepath, check_types=False) or NodePath()
-        node = self.yamlfigns.get_node(nodepath)
+        node = self.ayns.get_node(nodepath)
         if str(nodepath) in self._eval_paths:
             return node
 
@@ -142,13 +142,13 @@ class EvalContext(metaclass=NamespaceableMeta):
         def maybe_evaluate(node):
             if id(node) in self._eval_cache:
                 return self._eval_cache[id(node)]
-            e = node.yamlfigns.evaluate_node(prefix, self)
+            e = node.ayns.evaluate_node(prefix, self)
             self._eval_cache[id(node)] = e
             return e
 
         evaluated_parent = None
         if prefix:
-            evaluated_parent = self.yamlfigns.get_node(prefix[:-1])
+            evaluated_parent = self.ayns.get_node(prefix[:-1])
             if isinstance(evaluated_parent, ConfigNode):
                 evaluated_parent = self.evaluate_node(evaluated_parent, prefix=prefix[:-1])
 
@@ -163,7 +163,7 @@ class EvalContext(metaclass=NamespaceableMeta):
 
     def evaluate(self):
         ''' Returns:
-                `yamlfig.utils.Bunch` representing evaluated config node.
+                `awesomeyaml.utils.Bunch` representing evaluated config node.
         '''
         self._eval_cache.clear()
         self._eval_paths.clear()

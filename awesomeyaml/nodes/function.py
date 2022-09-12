@@ -45,7 +45,7 @@ class FunctionNode(ConfigDict):
     def __bool__(self):
         return bool(self._func)
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def merge(self, other):
         if isinstance(other, str):
             self._func = other
@@ -60,17 +60,17 @@ class FunctionNode(ConfigDict):
         except AttributeError:
             pass
 
-        return super().yamlfigns.merge(other)
+        return super().ayns.merge(other)
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def on_evaluate(self, path, ctx):
         raise NotImplementedError()
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def represent(self):
-        return self.yamlfigns.tag, self.yamlfigns.get_node_info_to_save(), super()._get_value()
+        return self.ayns.tag, self.ayns.get_node_info_to_save(), super()._get_value()
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     @property
     def func(self):
         return self._func
@@ -85,13 +85,13 @@ class FunctionNode(ConfigDict):
         self._func, super_val = value
         return super()._set_value(super_val)
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     @staticproperty
     @staticmethod
     def is_leaf():
        return False
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     @property
     def tag(self):
         raise NotImplementedError()

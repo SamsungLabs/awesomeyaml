@@ -20,7 +20,7 @@ from setuptools.command.build_py import build_py
 import importlib.util
 from pathlib import Path
 
-package_name = 'yamlfig'
+package_name = 'awesomeyaml'
 
 version_file = Path(__file__).parent.joinpath(package_name, 'version.py')
 spec = importlib.util.spec_from_file_location('{}.version'.format(package_name), version_file)
@@ -42,8 +42,8 @@ setup(name=package_name,
       description='Config-building utilities using YAML',
       author='Łukasz Dudziak',
       author_email='l.dudziak@samsung.com',
-      url='https://github.com/SamsungLabs/pyworkers',
-      download_url='https://github.com/SamsungLabs/pyworkers',
+      url='https://github.com/SamsungLabs/awesomeyaml',
+      download_url='https://github.com/SamsungLabs/awesomeyaml',
       long_description=long_desc,
       long_description_content_type='text/markdown',
       python_requires='>=3.6.0',

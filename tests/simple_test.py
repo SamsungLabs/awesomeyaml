@@ -30,12 +30,12 @@ class SimpleTest(unittest.TestCase):
         }
 
     def test_empty_config(self):
-        from yamlfig.config import Config
+        from awesomeyaml.config import Config
         cfg = Config()
         self.assertEqual(len(cfg), 0)
 
     def test_config(self):
-        from yamlfig.config import Config
+        from awesomeyaml.config import Config
         cfg = Config(self.data)
         self.assertEqual(cfg.test, 1)
         self.assertEqual(cfg.test2, 12)

@@ -22,7 +22,7 @@ class ImportNode(ConfigScalar(str)):
 
         The import node can be used to embed any python entity within the config.
         Internally, it is treated as a standard string node with the only exception
-        being its evaluation which is implemented by the means of :py:func:`yamlfig.utils.import_name`.
+        being its evaluation which is implemented by the means of :py:func:`awesomeyaml.utils.import_name`.
         Specifically, the evaluated value is defined as::
 
             return import_name(str(self))
@@ -41,11 +41,11 @@ class ImportNode(ConfigScalar(str)):
     def __init__(self, name, **kwargs):
         super().__init__(name, **kwargs)
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def on_evaluate(self, path, ctx):
         return import_name(str(self))
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     @staticproperty
     @staticmethod
     def tag():

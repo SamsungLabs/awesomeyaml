@@ -2,5 +2,5 @@
 __pycache__
 *.egg-info
 docs/build/
-docs/source/yamlfig*
+docs/source/awesomeyaml*
 dist/

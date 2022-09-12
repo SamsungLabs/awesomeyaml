@@ -113,16 +113,16 @@ class staticproperty(property):
 class namespaceable_property(property):
     def __init__(self, fget, fset, fdel, doc, namespace_data):
         super().__init__(fget, fset, fdel, doc)
-        self._yamlfig_namespace = namespace_data
+        self._awesomeyaml_namespace = namespace_data
 
     def getter(self, func):
-        return type(self)(func, self.fset, self.fdel, self.__doc__, self._yamlfig_namespace)
+        return type(self)(func, self.fset, self.fdel, self.__doc__, self._awesomeyaml_namespace)
 
     def setter(self, func):
-        return type(self)(self.fget, func, self.fdel, self.__doc__, self._yamlfig_namespace)
+        return type(self)(self.fget, func, self.fdel, self.__doc__, self._awesomeyaml_namespace)
 
     def deleter(self, func):
-        return type(self)(self.fget, self.fset, func, self.__doc__, self._yamlfig_namespace)
+        return type(self)(self.fget, self.fset, func, self.__doc__, self._awesomeyaml_namespace)
 
 
 def namespace(namespace_name, namespace_type=Namespace):
@@ -133,7 +133,7 @@ def namespace(namespace_name, namespace_type=Namespace):
         if isinstance(func, property) and not isinstance(func, namespaceable_property):
             func = namespaceable_property(func.__get__, func.__set__, func.__delete__, func.__doc__, namespace_data)
         else:
-            func._yamlfig_namespace = namespace_data
+            func._awesomeyaml_namespace = namespace_data
         return func
     return namespace_decorator
 
@@ -147,8 +147,8 @@ class NamespaceableMeta(type):
                     raise ValueError('Expected exactly one base for an embedded Namespace type')
                 namespace_name = name
                 namespace_type = value.__bases__[0]
-            elif hasattr(value, '_yamlfig_namespace'):
-                namespace_name, namespace_type = value._yamlfig_namespace
+            elif hasattr(value, '_awesomeyaml_namespace'):
+                namespace_name, namespace_type = value._awesomeyaml_namespace
             else:
                 continue
 

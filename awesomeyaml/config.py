@@ -27,7 +27,7 @@ class Config(Bunch, metaclass=NamespaceableMeta):
     '''
     def __init__(self, config_dict=None):
         ''' Arguments:
-                config_dict : `dict` or unevaluated `yamlfig.nodes.ConfigDict`, `None`
+                config_dict : `dict` or unevaluated `awesomeyaml.nodes.ConfigDict`, `None`
                     represents an empty dict.
         '''
         if config_dict is not None and not isinstance(config_dict, dict):
@@ -49,7 +49,7 @@ class Config(Bunch, metaclass=NamespaceableMeta):
 
     @classmethod
     def build(cls, *sources, raw_yaml=None, filename=None):
-        ''' Builds a config from the provided yaml sources and evaluates it, returning `yamlfig.Config` object.
+        ''' Builds a config from the provided yaml sources and evaluates it, returning `awesomeyaml.Config` object.
 
             Arguments:
                 *sources : a list of yaml sources - that can include file-like objects, filenames and strings of yaml
@@ -110,22 +110,22 @@ class Config(Bunch, metaclass=NamespaceableMeta):
     @staticmethod
     def check_missing(cfg):
         missing = []
-        for path, node in cfg.yamlfigns.nodes_with_paths():
+        for path, node in cfg.ayns.nodes_with_paths():
             if isinstance(node, RequiredNode):
                 missing.append(repr(path))
 
         if missing:
             raise ValueError('The following required nodes have not been set:\n    ' + '\n    '.join(missing))
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     @property
     def source(self):
-        ''' The source `yamlfig.nodes.ConfigDict` which was evaluated to construct
-            this `yamlfig.Config`.
+        ''' The source `awesomeyaml.nodes.ConfigDict` which was evaluated to construct
+            this `awesomeyaml.Config`.
         '''
         return self._source
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def pprint(self, ind=2, init_level=0):
         import io
         import functools

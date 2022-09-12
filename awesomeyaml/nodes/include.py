@@ -30,7 +30,7 @@ class IncludeNode(ConfigNode):
         This filename can either be absolute or relative.
         In the later case, a specific file will be looked up in directories
         defined by a builder object which was used to build the config - please
-        see :py:meth:`yamlfig.Builder.get_lookup_dirs`.
+        see :py:meth:`awesomeyaml.Builder.get_lookup_dirs`.
         The standard implementation looks up files with respect to the source file
         of the include node (preferred) or the current working directory.
 
@@ -61,7 +61,7 @@ class IncludeNode(ConfigNode):
             The following snippets are equivalent.
             Python only::
 
-                cfg = yamlfig.Config.build('file1', 'file2', 'file3')
+                cfg = awesomeyaml.Config.build('file1', 'file2', 'file3')
 
             Aggregated in a single file::
 
@@ -74,7 +74,7 @@ class IncludeNode(ConfigNode):
                 !include file3
 
                 # in Python
-                cfg = yamlfig.Config.build('master_file')
+                cfg = awesomeyaml.Config.build('master_file')
 
             The same using long form:
 
@@ -83,7 +83,7 @@ class IncludeNode(ConfigNode):
                 !include [file1, file2, file3]
 
                 # in Python
-                cfg = yamlfig.Config.build('master_file')
+                cfg = awesomeyaml.Config.build('master_file')
 
     '''
     def __init__(self, filenames, *args, **kwargs):
@@ -98,7 +98,7 @@ class IncludeNode(ConfigNode):
 
         self.filenames = [os.path.expanduser(f) for f in filenames]
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def on_preprocess(self, path, builder):
         subbuilder = builder.get_subbuilder(path)
         missing = []
@@ -121,16 +121,16 @@ class IncludeNode(ConfigNode):
         if missing:
             raise FileNotFoundError({ 'missing': missing, 'lookup_dirs': list(subbuilder.get_lookup_dirs(self._source_file)), 'source': self._source_file })
 
-        return subbuilder.build().yamlfigns.on_preprocess(path, builder)
+        return subbuilder.build().ayns.on_preprocess(path, builder)
 
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     @staticproperty
     @staticmethod
     def tag():
         return '!include'
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     @property
     def value(self):
         return {

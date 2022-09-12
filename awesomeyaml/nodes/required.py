@@ -20,17 +20,17 @@ class RequiredNode(ConfigNode):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     def on_evaluate(self, path, ctx):
         raise ValueError(f'RequiredNode should not appear during evaluation: {path!r}')
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     @staticproperty
     @staticmethod
     def tag():
         return '!required'
 
-    @namespace('yamlfigns')
+    @namespace('ayns')
     @property
     def value(self):
         return str()
