@@ -54,7 +54,7 @@ python -m pip install awesomeyaml
 
 Alternatively, you can also perform installation by cloning this repo and installing directly from it with pip:
 ```bash
-git clone https://github.sec.samsung.net/SAIC-Cambridge/awesomeyaml.git
+git clone https://github.com/SamsungLabs/awesomeyaml.git
 python -m pip install ./awesomeyaml
 ```
 
@@ -67,7 +67,7 @@ python -m pip install -e ./awesomeyaml
 or, if you don't need the repo to be laying around simply install directly from github:
 
 ```bash
-python -m pip install https://github.sec.samsung.net/SAIC-Cambridge/awesomeyaml/tarball/master#egg=awesomeyaml
+python -m pip install https://github.com/SamsungLabs/awesomeyaml/tarball/master#egg=awesomeyaml
 ```
 
 ## Running tests
