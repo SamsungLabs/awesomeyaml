@@ -1,4 +1,4 @@
-Welcome to Yamlfig's documentation!
+Welcome to Awesomeyaml's documentation!
 ===================================
 
 .. toctree::

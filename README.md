@@ -46,7 +46,7 @@ Briefly speaking, `awesomeyaml` is capable of:
 
 ## Installation
 
-Yamlfig requires `pyyaml` and `Python>=3.6`.
+Awesomeyaml requires `pyyaml` and `Python>=3.6`.
 You can install `awesomeyaml` from PyPI by simply issuing:
 ```bash
 python -m pip install awesomeyaml
@@ -214,7 +214,7 @@ See the [summary of the extended tags](#Summary-of-extended-tags) for an overvie
 
 ## Introduction
 
-Yamlfig was originally developed to make it easier to work with multiple configuration files, therefore it shines especially when configuration has a modular nature -- i.e., different parts of the system can be configured independently from each other, but at the same time might introduce requirements for each other, etc.
+Awesomeyaml was originally developed to make it easier to work with multiple configuration files, therefore it shines especially when configuration has a modular nature -- i.e., different parts of the system can be configured independently from each other, but at the same time might introduce requirements for each other, etc.
 A prominent example of such a system could be a machine learning project which supports multiple models, datasets and optimization techniques.
 Usually, each of these elements can be configured independently from the rest, e.g., the dataset configuration can include parameters for a common preprocessing done for this dataset regardless of what model is used.
 Analogically, the model configuration can also be done mostly independently from the dataset in use, however, it does contain some parameters which are strictly determined by the dataset - e.g., for an image classification network that would be a number of classes for the last layer.
@@ -333,7 +333,7 @@ For example, in our example above, if the merging order was swappedt he value `1
 ### Yaml streams
 Yaml includes a built-in mechanism for including multiple "files" inside a single physical file.
 This is achieved by separating contents with a line containing `---`.
-Yamlfig supports reading yaml sources with more than one "file" inside them - we call such entities yaml streams (the term also covers multiple yaml sources defined outside of yaml).
+Awesomeyaml supports reading yaml sources with more than one "file" inside them - we call such entities yaml streams (the term also covers multiple yaml sources defined outside of yaml).
 
 Yaml streams can be nested.
 For example, consider a user-defined list of files: `['file1.yaml', 'file2.yaml']`.
@@ -394,7 +394,7 @@ For more information about what nodes are executed lazily and what they do, plea
 
 ### Adding user-defined metadata
 
-Yamlfig allows its users to assign arbitrary metadata to any of the nodes in the config - this is done by (ab)using yaml tag mechanism.
+Awesomeyaml allows its users to assign arbitrary metadata to any of the nodes in the config - this is done by (ab)using yaml tag mechanism.
 At the core level, metadata are stored as a postfix to any tag which contains hex-encoded result of pickling python literals - this tag suffix can potentially be added to any other tag.
 
 > **Note:** although not directly enforced, official support for metadata is only limited to the cases where the top level element is a `dict`. You can try encoding other literals and there's a chance that everything will be fine (since internally metadata are unused), but we do not guarantee anything. Also, as explained later, our syntax extension only supports `dict` types.
@@ -509,7 +509,7 @@ See [quick reference](#Quick-reference) for a short example of how handling of t
 
 ### Accessing evaluated fields
 
-Yamlfig implements the [bunch](https://pypi.org/project/bunch/) pattern for all its `dict`-like objects, including the main config object.
+Awesomeyaml implements the [bunch](https://pypi.org/project/bunch/) pattern for all its `dict`-like objects, including the main config object.
 Therefore, after the config object is built, its content can be accessed either by using standard indexing operator (like normal `dict`) or through attribute names.
 Following our example from above, the following lines are analogical:
 ```python

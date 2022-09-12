@@ -17,8 +17,8 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'Yamlfig'
-copyright = '2020, Łukasz Dudziak'
+project = 'awesomeyaml'
+copyright = '2022, Łukasz Dudziak'
 author = 'Łukasz Dudziak'
 
 # The full version, including alpha/beta/rc tags
