@@ -4,3 +4,4 @@ __pycache__
 docs/build/
 docs/source/awesomeyaml*
 dist/
+build/
