@@ -632,7 +632,7 @@ def parse(data, filename_or_builder=None, config_nodes=True):
                 raise
 
 
-def dump(nodes, output=None, open_mode='w', exclude_metadata=None, **kwargs):
+def dump(nodes, output=None, open_mode='w', exclude_metadata=None, sort_keys=False, **kwargs):
     close = False
     if isinstance(output, str):
         output = open(output, open_mode)
@@ -646,7 +646,7 @@ def dump(nodes, output=None, open_mode='w', exclude_metadata=None, **kwargs):
         return dumper
 
     try:
-        ret = yaml.dump(ConfigNode(nodes), stream=output, Dumper=get_dumper, **kwargs)
+        ret = yaml.dump(ConfigNode(nodes), stream=output, Dumper=get_dumper, sort_keys=sort_keys, **kwargs)
     finally:
         if close:
             output.close()
