@@ -27,7 +27,7 @@ class XRefNode(ConfigScalar(str)):
         curr = self
         while isinstance(curr, XRefNode):
             try:
-                ref = ctx.ayns.get_node(curr)
+                ref = ctx.get_node(curr)
             except KeyError:
                 msg = f'Referenced node {str(curr)!r} is missing, while following a chain of references: {chain}'
                 raise ValueError(msg) from None

@@ -220,7 +220,9 @@ def import_name(symbol_name):
 
 
 class Bunch(dict):
-    def __init__(self, other):
+    def __init__(self, other=None):
+        if other is None:
+            other = {}
         super().__init__(other)
 
     def __getattr__(self, name):

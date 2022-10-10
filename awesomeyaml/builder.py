@@ -149,7 +149,8 @@ class Builder():
                     source = f.read()
             except (FileNotFoundError, OSError) as e:
                 #OSError(22) is "Invalid argument"
-                if type(e) is OSError and e.errno != 22:
+                #OSError(36) is "File name too long"
+                if type(e) is OSError and e.errno not in [22, 36]:
                     raise
                 if raw_yaml is not None:
                     raise

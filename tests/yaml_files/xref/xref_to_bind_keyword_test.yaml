@@ -1,0 +1,9 @@
+
+
+foo: !xref 'bar.a'
+bar: !bind:tests.utils.dummy
+    a: 6
+
+
+###EXPECTED
+skip

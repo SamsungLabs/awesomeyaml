@@ -93,7 +93,7 @@ class FunctionNode(ConfigDict):
     @staticproperty
     @staticmethod
     def is_leaf():
-       return False
+       return True
 
     @namespace('ayns')
     @property

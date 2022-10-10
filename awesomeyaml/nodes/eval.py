@@ -69,19 +69,21 @@ class EvalNode(ConfigScalar(str)):
         code_hash = hashlib.md5(str(self).encode('utf-8')).hexdigest()
         eval_module_name = f'{EvalNode._top_namespace_module_name}.{str(path).replace(".", "_")}_0x{code_hash}'
 
-        gbls = { 'ayns': Bunch({
-                'ctx': ctx
+        lcls = ctx.ecfg
+        gbls = {
+            'ayns': Bunch({
+                'ctx': ctx,
+                'cfg': lcls
             })
         }
-        gbls.update(copy.copy(ctx.get_eval_symbols()))
-        gbls.update(dict(ctx.ayns.named_children()))
+        gbls.update(ctx.get_eval_symbols())
         gbls.update({ '__name__': eval_module_name, '__file__': self._source_file })
 
         lines = self.strip().split('\n')
         lines = [lline for line in lines for lline in line.split(';')]
         try:
-            exec("\n".join(lines[:-1]), gbls)
-            ret = eval(lines[-1].strip(), gbls)
+            exec("\n".join(lines[:-1]), gbls, lcls)
+            ret = eval(lines[-1].strip(), gbls, lcls)
         except:
             et, e, _ = sys.exc_info()
             raise EvalError(f'Exception occurred while evaluation an eval node {path!r} from file {str(self.ayns.source_file)!r}:\n\nCode:\n{os.linesep.join(lines)}\n\nError:\n{et.__name__}: {e}') from None
