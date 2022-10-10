@@ -14,7 +14,6 @@
 
 from .dict import ConfigDict
 from ..namespace import namespace, staticproperty
-from ..utils import import_name
 
 
 class FunctionNode(ConfigDict):
@@ -31,11 +30,16 @@ class FunctionNode(ConfigDict):
         else:
             self._func = func
 
+        if self._func == "":
+            raise ValueError('Function name cannot be empty!')
+
         if args is not None and not isinstance(args, dict):
             if isinstance(args, list) or isinstance(args, tuple):
                 args = { idx: val for idx, val in enumerate(args) }
+            elif args == "":
+                args = {}
             else:
-                args = { 0: args }
+                raise ValueError(f'Argument to the {self.ayns.tag.split(":")[0]}:<function_name> node should be either a dict, list/tuple or an empty string! Got: {args!r}')
 
         if not kwargs.get('delete', None):
             kwargs.setdefault('delete', True)

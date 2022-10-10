@@ -1,0 +1,12 @@
+---
+f: !call:tests.utils.linear_f
+    0: 2
+    a: 2
+    b: 1
+
+---
+f:
+    b: 15
+
+###EXPECTED
+f: 19

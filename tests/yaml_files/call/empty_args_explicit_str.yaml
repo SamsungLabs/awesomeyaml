@@ -1,0 +1,6 @@
+---
+f: !call:tests.utils.dummy ""
+
+
+###EXPECTED
+f: !!python/tuple [!!python/tuple [], {}]

@@ -1,0 +1,7 @@
+---
+f: !bind:tests.utils.dummy "test"
+
+
+###ERROR
+awesomeyaml.errors.ParsingError
+Argument to the !bind:<function_name> node should be either a dict, list/tuple or an empty string! Got: 'test'

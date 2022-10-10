@@ -1,0 +1,13 @@
+---
+f: !call:tests.utils.linear_f
+    0: 1
+    a: 2
+    b: 1
+
+---
+f: !call:tests.utils.cubic_f
+    0: 2
+    b: 3
+
+###EXPECTED
+f: 11

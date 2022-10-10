@@ -4,7 +4,7 @@ f: !bind tests.utils.linear_f
 ###EXPECTED
 skip
 
-###VALIDATE:
+###VALIDATE
 from tests.utils import linear_f
 self.assertEqual(result.f.func, linear_f)
 self.assertEqual(result.f(2), 2)

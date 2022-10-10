@@ -1,0 +1,6 @@
+---
+f: !bind
+
+###ERROR
+awesomeyaml.errors.ParsingError
+Function name cannot be empty!

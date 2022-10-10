@@ -1,0 +1,7 @@
+---
+f: !call:tests.utils.linear_f
+    0: 0
+
+
+###EXPECTED
+f: 0

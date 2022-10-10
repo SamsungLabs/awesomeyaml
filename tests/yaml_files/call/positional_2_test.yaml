@@ -1,0 +1,11 @@
+---
+f: !call:tests.utils.square_f
+    0: 4
+    1: 2
+---
+f:
+    1: 15
+
+
+###EXPECTED
+f: 240

@@ -33,3 +33,7 @@ def cubic_f(x, *, a=1, b=0):
 
 def square_f(x, a=1, b=0):
     return a*(x**2) + b
+
+
+def dummy(*args, **kwargs):
+    return (args, kwargs)
