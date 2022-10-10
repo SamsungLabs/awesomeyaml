@@ -14,10 +14,11 @@
 
 import unittest
 import os
-import glob
 from pathlib import Path
+from contextlib import ExitStack
 
 from .utils import setUpModule
+from awesomeyaml.utils import import_name
 
 
 class YamlFileTest():
@@ -28,16 +29,27 @@ class YamlFileTest():
         self.test_yaml = []
         self.expected_result = []
         self.validate_code = []
+        self.expected_error = []
         test_input = True
         extra_code = False
+        error_str = False
+        is_error = False
+        is_not_error = False
         with open(self.test_file, 'r') as test:
             for line in test:
-                if line.startswith('###EXPECTED'):
-                    assert test_input and not extra_code
+                if line.startswith('###ERROR'):
+                    assert test_input and not extra_code and not is_error and not is_not_error
+                    is_error = True
                     test_input = False
+                    error_str = True
+                    continue
+                if line.startswith('###EXPECTED'):
+                    assert test_input and not extra_code and not is_error and not is_not_error
+                    test_input = False
+                    is_not_error = True
                     continue
                 if line.startswith('###VALIDATE'):
-                    assert not test_input and not extra_code
+                    assert not test_input and not extra_code and not is_error and is_not_error
                     extra_code = True
                     continue
                 
@@ -46,24 +58,38 @@ class YamlFileTest():
                     self.test_yaml.append(line)
                 elif extra_code:
                     self.validate_code.append(line)
+                elif error_str:
+                    self.expected_error.append(line)
                 else:
                     self.expected_result.append(line)
 
         self.test_yaml = ''.join(self.test_yaml)
         self.expected_result = ''.join(self.expected_result)
         self.validate_code = ''.join(self.validate_code)
-        if not self.expected_result and not self.validate_code:
-            raise ValueError(f'Both expected result and validate code are empty - missing "###EXPECTED" or "###VALIDATE" clause?')
+        if not self.expected_result and not self.validate_code and not self.expected_error:
+            raise ValueError(f'All of: expected result, validate code, and expected error are empty - missing "###EXPECTED", "###VALIDATE", or "###ERROR clause? File: {test_file}')
 
     def test(self):
         from awesomeyaml.config import Config
         import yaml
-        result = Config.build(self.test_yaml, filename=self.test_file)
-        expected = yaml.load(self.expected_result, Loader=yaml.Loader)
-        if expected != 'skip':
-            self.assertEqual(result, expected)
-        if self.validate_code:
-            exec(self.validate_code)
+
+        with ExitStack() as stack:
+            if self.expected_error:
+                assert not self.expected_result and not self.validate_code
+                exc_type = import_name(self.expected_error[0].strip())
+                exp_msg = ''.join(self.expected_error[1:]).strip()
+                if not exp_msg:
+                    exp_msg = None
+                stack.enter_context(self.assertRaisesRegex(exc_type, exp_msg))
+
+            result = Config.build(self.test_yaml, filename=self.test_file)
+
+            if not self.expected_error:
+                expected = yaml.load(self.expected_result, Loader=yaml.Loader)
+                if expected != 'skip':
+                    self.assertEqual(result, expected)
+                if self.validate_code:
+                    exec(self.validate_code)
 
     @classmethod
     def make_test_case_type(cls, test_file, class_arg):

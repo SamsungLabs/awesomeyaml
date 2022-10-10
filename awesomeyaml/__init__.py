@@ -16,6 +16,7 @@ from . import config
 from . import builder
 from . import eval_context
 from . import yaml
+from . import errors
 
 Config = config.Config
 Builder = builder.Builder
