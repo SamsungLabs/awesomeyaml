@@ -30,16 +30,14 @@ class FunctionNode(ConfigDict):
         else:
             self._func = func
 
-        if self._func == "":
+        if self._func == "" or self._func is None:
             raise ValueError('Function name cannot be empty!')
 
         if args is not None and not isinstance(args, dict):
             if isinstance(args, list) or isinstance(args, tuple):
                 args = { idx: val for idx, val in enumerate(args) }
-            elif args == "":
-                args = {}
             else:
-                raise ValueError(f'Argument to the {self.ayns.tag.split(":")[0]}:<function_name> node should be either a dict, list/tuple or an empty string! Got: {args!r}')
+                args = { 0: args }
 
         if not kwargs.get('delete', None):
             kwargs.setdefault('delete', True)

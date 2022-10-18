@@ -1,5 +1,5 @@
 ---
-f: !bind:tests.utils.dummy ""
+f: !bind:tests.utils.dummy null
 
 
 ###EXPECTED
@@ -8,4 +8,4 @@ skip
 ###VALIDATE
 from tests.utils import dummy
 self.assertEqual(result.f.func, dummy)
-self.assertEqual(result.f(), ((),{}))
+self.assertEqual(result.f(), ((None,),{}))

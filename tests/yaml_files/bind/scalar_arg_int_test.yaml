@@ -2,6 +2,10 @@
 f: !bind:tests.utils.dummy 129
 
 
-###ERROR
-awesomeyaml.errors.ParsingError
-Argument to the !bind:<function_name> node should be either a dict, list/tuple or an empty string! Got: '129'
+###EXPECTED
+skip
+
+###VALIDATE
+from tests.utils import dummy
+self.assertEqual(result.f.func, dummy)
+self.assertEqual(result.f(), ((129,),{}))
