@@ -14,6 +14,7 @@
 
 import yaml
 import re
+import copy
 import token
 import pickle
 import tokenize
@@ -72,34 +73,22 @@ def _decode_metadata(encoded):
     return pickle.loads(bytes.fromhex(encoded))
 
 
-def _maybe_parse_scalar(loader, node, reparse=True):
-    ret = loader.construct_scalar(node)
-    if reparse and isinstance(ret, str) and not ret.strip().startswith('!'):
-        ret = yaml.safe_load(ret)
-
+def parse_scalar(loader, node):
+    plain = (node.style is None)
+    implicit = (True, False) if plain else (False, True)
+    notag = copy.deepcopy(node)
+    notag.tag = loader.resolve(yaml.ScalarNode, notag.value, implicit)
+    ret = loader.construct_object(notag, deep=True)
+    if ret is None and node.value != '':
+        # we differentiate between explicit and implicit None
+        # for explicit None, return ConfigNode(None) so that "value is None"
+        # evaluates for False, this is needed by e.g., FunctionNode to detect lack of
+        # arguments (implicit None) and a single None argument (explicit None)
+        return ConfigNode(None)
     return ret
 
 
-def _make_obj(loader, node, objtype, reparse_scalars=False):
-    args = []
-    kwargs = {}
-    if isinstance(node, yaml.MappingNode):
-        kwargs = loader.construct_mapping(node, deep=True)
-    elif isinstance(node, yaml.SequenceNode):
-        args = loader.construct_sequence(node, deep=True)
-    elif isinstance(node, yaml.ScalarNode):
-        val = _maybe_parse_scalar(loader, node, reparse=reparse_scalars)
-        if val:
-            args = [val]
-
-    if '*' in kwargs:
-        args.extend(kwargs['*'])
-        del kwargs['*']
-
-    return objtype(*args, **kwargs)
-
-
-def _make_node(loader, node, node_type=ConfigNode, kwargs=None, data_arg_name=None, dict_is_data=True):
+def _make_node(loader, node, node_type=ConfigNode, kwargs=None, data_arg_name=None, dict_is_data=True, parse_scalars=True):
     ''' A generic function to create new config nodes.
 
         Arguments:
@@ -134,13 +123,17 @@ def _make_node(loader, node, node_type=ConfigNode, kwargs=None, data_arg_name=No
     kwargs = kwargs or {}
     data = None
     is_dict = False
+
     if isinstance(node, yaml.MappingNode):
         data = loader.construct_mapping(node, deep=True)
         is_dict = True
     elif isinstance(node, yaml.SequenceNode):
         data = loader.construct_sequence(node, deep=True)
     elif isinstance(node, yaml.ScalarNode):
-        data = _maybe_parse_scalar(loader, node, reparse=node_type is ConfigNode)
+        if not parse_scalars:
+            data = loader.construct_scalar(node)
+        else:
+            data = parse_scalar(loader, node)
 
     kwargs.setdefault('source_file', loader.context.get_current_file())
 
@@ -197,19 +190,19 @@ def _metadata_constructor(loader, tag_suffix, node):
 @rethrow_as_parsing_error_impl
 def _include_constructor(loader, node):
     from .nodes.include import IncludeNode
-    return _make_node(loader, node, node_type=IncludeNode, dict_is_data=False)
+    return _make_node(loader, node, node_type=IncludeNode, dict_is_data=False, parse_scalars=False)
 
 
 @rethrow_as_parsing_error_impl
 def _prev_constructor(loader, node):
     from .nodes.prev import PrevNode
-    return _make_node(loader, node, node_type=PrevNode)
+    return _make_node(loader, node, node_type=PrevNode, parse_scalars=False)
 
 
 @rethrow_as_parsing_error_impl
 def _xref_constructor(loader, node):
     from .nodes.xref import XRefNode
-    return _make_node(loader, node, node_type=XRefNode)
+    return _make_node(loader, node, node_type=XRefNode, parse_scalars=False)
 
 @rethrow_as_parsing_error_impl
 def _xref_constructor_md(loader, tag_suffix, node):
@@ -222,7 +215,7 @@ def _xref_constructor_md(loader, tag_suffix, node):
     kwargs['metadata'] = metadata
 
     from .nodes.xref import XRefNode
-    return _make_node(loader, node, kwargs=kwargs, node_type=XRefNode)
+    return _make_node(loader, node, kwargs=kwargs, node_type=XRefNode, parse_scalars=False)
 
 
 @rethrow_as_parsing_error_impl
@@ -269,13 +262,13 @@ def _eval_constructor(loader, tag_suffix, node):
             kwargs[special] = metadata.pop(special)
 
     kwargs['metadata'] = metadata
-    return _make_node(loader, node, node_type=EvalNode, kwargs=kwargs)
+    return _make_node(loader, node, node_type=EvalNode, kwargs=kwargs, parse_scalars=False)
 
 
 @rethrow_as_parsing_error_impl
 def _simple_eval_constructor(loader, node):
     from .nodes.eval import EvalNode
-    return _make_node(loader, node, node_type=EvalNode)
+    return _make_node(loader, node, node_type=EvalNode, parse_scalars=False)
 
 
 @rethrow_as_parsing_error_impl
@@ -288,7 +281,7 @@ def _fstr_constructor(loader, node):
         except ValueError:
             return FStrNode("f'" + value.replace(r"'", r"\'") + "'", *args, **kwargs)
 
-    return _make_node(loader, node, node_type=_maybe_fix_fstr)
+    return _make_node(loader, node, node_type=_maybe_fix_fstr, parse_scalars=False)
 
 
 @rethrow_as_parsing_error_impl
@@ -296,7 +289,7 @@ def _import_constructor(loader, node):
     import importlib
     module = importlib.import_module('.nodes.import', package='awesomeyaml') # dirty hack because "import" is a keyword
     ImportNode = module.ImportNode
-    return _make_node(loader, node, node_type=ImportNode)
+    return _make_node(loader, node, node_type=ImportNode, parse_scalars=False)
 
 
 @rethrow_as_parsing_error_impl
@@ -306,7 +299,7 @@ def _required_constructor(loader, node):
         if arg != '':
             raise ValueError(f'!required node does not expect any arguments - got: {arg}')
         return RequiredNode(**kwargs)
-    return _make_node(loader, node, node_type=_check_empty_str)
+    return _make_node(loader, node, node_type=_check_empty_str, parse_scalars=False)
 
 
 @rethrow_as_parsing_error_impl
