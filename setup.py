@@ -53,7 +53,7 @@ setup(name=package_name,
           'GitPython'
       ],
       install_requires=[
-          'pyyaml'
+          'pyyaml >= 5.1'
       ],
       packages=find_packages(where='.', exclude=['tests']),
       package_dir={ '': '.' },
