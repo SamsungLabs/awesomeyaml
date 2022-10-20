@@ -1,8 +1,5 @@
 test: !path
 
 
-###EXPECTED
-skip
-
 ###VALIDATE
 self.assertEqual(result.test, Path('.'))

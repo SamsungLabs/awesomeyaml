@@ -3,9 +3,6 @@ f: !bind:tests.utils.linear_f
     a: 2
     b: 1
 
-###EXPECTED
-skip
-
 ###VALIDATE
 from tests.utils import linear_f
 self.assertEqual(result.f.func, linear_f)

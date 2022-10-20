@@ -133,7 +133,9 @@ class IncludeNode(ConfigNode):
     @namespace('ayns')
     @property
     def value(self):
-        return {
-            'filenames': self.filenames,
-            'ref_file': self.ref_file
-        }
+        return self.filenames
+
+    def __eq__(self, other):
+        if isinstance(other, IncludeNode):
+            return self._source_file == other._source_file and self.filenames == other.filenames
+        return False

@@ -1,9 +1,6 @@
 ---
 f: !import tests.utils.linear_f
 
-###EXPECTED
-skip
-
 ###VALIDATE
 from tests.utils import linear_f as target
 self.assertIs(result.f, target)

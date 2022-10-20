@@ -1,0 +1,6 @@
+---
+f: !null{{ 'foo': 'bar' }} null
+
+###ERROR
+awesomeyaml.errors.ParsingError
+!null does not expect any arguments, but got: .*

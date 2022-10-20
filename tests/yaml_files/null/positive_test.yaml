@@ -1,0 +1,5 @@
+---
+f: !null
+
+###VALIDATE
+self.assertIs(result.f, None)

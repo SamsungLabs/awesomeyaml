@@ -3,9 +3,6 @@ f: !bind:tests.utils.linear_f
     0: 0
 
 
-###EXPECTED
-skip
-
 ###VALIDATE
 with self.assertRaises(TypeError):
   result.f(2)

@@ -1,0 +1,6 @@
+---
+f: !required null
+
+###ERROR
+awesomeyaml.errors.ParsingError
+!required does not expect any arguments, but got: .*

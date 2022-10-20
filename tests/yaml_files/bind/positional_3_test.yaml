@@ -7,9 +7,6 @@ f:
     1: 15
 
 
-###EXPECTED
-skip
-
 ###VALIDATE
 # f should be 15*(4**2) + c
 self.assertEqual(result.f(0), 240)

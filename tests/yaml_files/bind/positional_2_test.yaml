@@ -4,9 +4,6 @@ f: !bind:tests.utils.square_f
     1: 2
 
 
-###EXPECTED
-skip
-
 ###VALIDATE
 # f should be 2*(4**2) + c
 self.assertEqual(result.f(0), 32)

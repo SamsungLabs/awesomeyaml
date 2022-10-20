@@ -3,8 +3,5 @@
 
 
 
-###EXPECTED
-skip
-
 ###VALIDATE
 self.assertEqual(result.foo, Path(__file__).parent.joinpath('yaml_files/path/sub/test'))

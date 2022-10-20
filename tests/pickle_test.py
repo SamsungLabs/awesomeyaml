@@ -50,6 +50,24 @@ class PickleTest(unittest.TestCase):
         test = ConfigScalar(None)
         self.check_pickle(test)
 
+    def test_scalar_explicit_class(self):
+        from awesomeyaml.nodes.scalar import ConfigScalar
+
+        test = ConfigScalar(int)(1)
+        self.check_pickle(test)
+
+        test = ConfigScalar(float)(0.1)
+        self.check_pickle(test)
+
+        test = ConfigScalar(str)('placki')
+        self.check_pickle(test)
+
+        test = ConfigScalar(bool)(True)
+        self.check_pickle(test)
+
+        test = ConfigScalar(type(None))(None)
+        self.check_pickle(test)
+
     def test_list(self):
         from awesomeyaml.nodes.list import ConfigList
 
@@ -61,6 +79,71 @@ class PickleTest(unittest.TestCase):
 
         test = ConfigDict({ 'test': False, 1: None })
         self.check_pickle(test, composed=True)
+
+    def test_append(self):
+        from awesomeyaml.nodes.append import AppendNode
+        test = AppendNode(['foo', 'bar'])
+        self.check_pickle(test)
+
+    def test_bind(self):
+        from awesomeyaml.nodes.bind import BindNode
+        test = BindNode('foo', { 'bar': 12 })
+        self.check_pickle(test)
+
+    def test_call(self):
+        from awesomeyaml.nodes.call import CallNode
+        test = CallNode('foo', { 'bar': 12 })
+        self.check_pickle(test)
+
+    def test_eval(self):
+        from awesomeyaml.nodes.eval import EvalNode
+        test = EvalNode('import awesomeyaml')
+        self.check_pickle(test)
+
+    def test_fstr(self):
+        from awesomeyaml.nodes.fstr import FStrNode
+        test = FStrNode('f"{foo}_bar"')
+        self.check_pickle(test)
+
+    def test_import(self):
+        import importlib
+        module = importlib.import_module('awesomeyaml.nodes.import') # dirty hack because "import" is a keyword
+        ImportNode = module.ImportNode
+        test = ImportNode('awesomeyaml.nodes.scalar.ScalarNode')
+        self.check_pickle(test)
+
+    def test_include(self):
+        from awesomeyaml.nodes.include import IncludeNode
+        test = IncludeNode('foo.yaml')
+        self.check_pickle(test)
+
+    def test_path(self):
+        from awesomeyaml.nodes.path import PathNode
+        test = PathNode(['foo', 'bar'], ref_point='file', src_filename='dar/car.yaml')
+        self.check_pickle(test)
+
+    def test_prev(self):
+        from awesomeyaml.nodes.prev import PrevNode
+        test = PrevNode('foo.bar')
+        self.check_pickle(test)
+
+    def test_required(self):
+        from awesomeyaml.nodes.required import RequiredNode
+        test = RequiredNode(None)
+        self.check_pickle(test)
+
+    def test_stream(self):
+        pass # steam nodes should never be attempted to serialize...
+
+    def test_xref(self):
+        from awesomeyaml.nodes.xref import XRefNode
+        test = XRefNode('foo.bar')
+        self.check_pickle(test)
+
+    def test_null(self):
+        from awesomeyaml.yaml import parse
+        test = list(parse('!null'))[0]
+        self.check_pickle(test)
 
 
 if __name__ == '__main__':

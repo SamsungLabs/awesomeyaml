@@ -30,44 +30,45 @@ class YamlFileTest():
         self.expected_result = []
         self.validate_code = []
         self.expected_error = []
-        test_input = True
-        extra_code = False
-        error_str = False
-        is_error = False
-        is_not_error = False
+        stage = 'test_yaml'
+
         with open(self.test_file, 'r') as test:
             for line in test:
                 if line.startswith('###ERROR'):
-                    assert test_input and not extra_code and not is_error and not is_not_error
-                    is_error = True
-                    test_input = False
-                    error_str = True
+                    stage = 'error'
                     continue
                 if line.startswith('###EXPECTED'):
-                    assert test_input and not extra_code and not is_error and not is_not_error
-                    test_input = False
-                    is_not_error = True
+                    stage = 'expected'
                     continue
                 if line.startswith('###VALIDATE'):
-                    assert not test_input and not extra_code and not is_error and is_not_error
-                    extra_code = True
+                    stage = 'validate'
                     continue
-                
-                assert not test_input or not extra_code
-                if test_input:
+
+                if stage == 'test_yaml':
                     self.test_yaml.append(line)
-                elif extra_code:
+                elif stage == 'validate':
                     self.validate_code.append(line)
-                elif error_str:
+                elif stage == 'error':
                     self.expected_error.append(line)
-                else:
+                elif stage == 'expected':
                     self.expected_result.append(line)
+                else:
+                    raise ValueError(f'Unexpected stage value! {stage!r}')
+
+
+        if not self.test_yaml:
+            raise ValueError('Empty yaml workload!')
 
         self.test_yaml = ''.join(self.test_yaml)
         self.expected_result = ''.join(self.expected_result)
         self.validate_code = ''.join(self.validate_code)
-        if not self.expected_result and not self.validate_code and not self.expected_error:
-            raise ValueError(f'All of: expected result, validate code, and expected error are empty - missing "###EXPECTED", "###VALIDATE", or "###ERROR clause? File: {test_file}')
+        if self.expected_error:
+            self.expected_error_msg = ''.join(self.expected_error[1:]).strip()
+            self.expected_error = self.expected_error[0].strip()
+
+        if self.expected_error:
+            if self.expected_result or self.validate_code:
+                raise ValueError('###ERROR is mutually exclusive any other checks!')
 
     def test(self):
         from awesomeyaml.config import Config
@@ -76,8 +77,8 @@ class YamlFileTest():
         with ExitStack() as stack:
             if self.expected_error:
                 assert not self.expected_result and not self.validate_code
-                exc_type = import_name(self.expected_error[0].strip())
-                exp_msg = ''.join(self.expected_error[1:]).strip()
+                exc_type = import_name(self.expected_error)
+                exp_msg = self.expected_error_msg
                 if not exp_msg:
                     exp_msg = None
                 stack.enter_context(self.assertRaisesRegex(exc_type, exp_msg))
@@ -85,8 +86,8 @@ class YamlFileTest():
             result = Config.build(self.test_yaml, filename=self.test_file)
 
             if not self.expected_error:
-                expected = yaml.load(self.expected_result, Loader=yaml.Loader)
-                if expected != 'skip':
+                if self.expected_result and self.expected_result != 'skip':
+                    expected = yaml.load(self.expected_result, Loader=yaml.Loader)
                     self.assertEqual(result, expected)
                 if self.validate_code:
                     exec(self.validate_code)

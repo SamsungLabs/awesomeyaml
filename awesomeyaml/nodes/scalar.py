@@ -38,7 +38,8 @@ class configbool(int):
 
 class ConfigNone(object):
     def __new__(cls, value):
-        assert value is None
+        if value is not None:
+            raise ValueError(f'!null does not expect any arguments, but got: {value!r}')
         return object.__new__(cls)
 
     def __repr__(self):
@@ -61,6 +62,7 @@ class ConfigNone(object):
 
 class ConfigScalarMeta(ConfigNodeMeta):
     _allowed_scalar_types = { int: int, float: float, bool: configbool, str: str, type(None): ConfigNone }
+    _rev_scalar_types = { value: key for key, value in _allowed_scalar_types.items() }
     _types = {}
 
     def __init__(cls, name, bases, dict):
@@ -79,6 +81,9 @@ class ConfigScalarMeta(ConfigNodeMeta):
         else:
             value_type = type(value)
 
+        if value_type not in ConfigScalarMeta._allowed_scalar_types and value_type in ConfigScalarMeta._rev_scalar_types:
+            value_type = ConfigScalarMeta._rev_scalar_types[value_type]
+
         if not issubclass(value_type, ConfigScalarMarker):
             #if value_type not in cls._allowed_scalar_types:
             #    raise ValueError(f'Unsupported scalar type: {value_type}')
@@ -95,7 +100,6 @@ class ConfigScalarMeta(ConfigNodeMeta):
         if type_only:
             return value_type
         ret = ConfigNodeMeta.__call__(value_type, value, **kwargs)
-        ret._dyn_instance = True
         return ret
 
     def __instancecheck__(cls, obj):
@@ -132,8 +136,6 @@ class ConfigScalar(ConfigScalarMarker, metaclass=ConfigScalarMeta):
                 self._dyn_base.__init__(self, value)
             except:
                 self._dyn_base.__init__(self) # pylint: disable=no-member
-
-        self._dyn_instance = False
 
     def __repr__(self, simple=False):
         if simple:
@@ -175,8 +177,11 @@ class ConfigScalar(ConfigScalarMarker, metaclass=ConfigScalarMeta):
 
         return self._dyn_base(self) # pylint: disable=no-member
 
+    def _is_primary_type_dynamic(self):
+        return type(self).__mro__[0] in ConfigScalar._types.values()
+
     def __reduce__(self):
-        if not self._dyn_instance:
+        if not self._is_primary_type_dynamic():
             return object.__reduce__(self)
 
         state = self.__dict__.copy()

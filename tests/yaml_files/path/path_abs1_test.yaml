@@ -1,8 +1,5 @@
 test: !path:abs(/root/test) testtest
 
 
-###EXPECTED
-skip
-
 ###VALIDATE
 self.assertEqual(result.test, Path('/root/test').joinpath('testtest'))

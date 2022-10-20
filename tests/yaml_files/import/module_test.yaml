@@ -1,9 +1,6 @@
 ---
 m: !import tests.utils
 
-###EXPECTED
-skip
-
 ###VALIDATE
 import tests.utils as target
 self.assertIs(result.m, target)

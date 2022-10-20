@@ -2,8 +2,5 @@
 f: !call:tests.utils.dummy "test"
 
 
-###EXPECTED
-skip
-
 ###VALIDATE
 self.assertEqual(result.f, (("test",),{}))

@@ -2,9 +2,6 @@
 f: !bind:tests.utils.dummy null
 
 
-###EXPECTED
-skip
-
 ###VALIDATE
 from tests.utils import dummy
 self.assertEqual(result.f.func, dummy)

@@ -1,0 +1,5 @@
+---
+f: !null{{ 'foo': 'bar' }}
+
+###VALIDATE
+self.assertIs(result.f, None)

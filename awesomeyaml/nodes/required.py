@@ -17,7 +17,10 @@ from ..namespace import namespace, staticproperty
 
 
 class RequiredNode(ConfigNode):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, value, *args, **kwargs):
+        if value is not None:
+            raise ValueError(f'!required does not expect any arguments, but got: {value!r}')
+
         super().__init__(*args, **kwargs)
 
     @namespace('ayns')
@@ -34,3 +37,6 @@ class RequiredNode(ConfigNode):
     @property
     def value(self):
         return str()
+
+    def __eq__(self, other):
+        return isinstance(other, RequiredNode)

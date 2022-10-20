@@ -295,11 +295,7 @@ def _import_constructor(loader, node):
 @rethrow_as_parsing_error_impl
 def _required_constructor(loader, node):
     from .nodes.required import RequiredNode
-    def _check_empty_str(arg, **kwargs):
-        if arg != '':
-            raise ValueError(f'!required node does not expect any arguments - got: {arg}')
-        return RequiredNode(**kwargs)
-    return _make_node(loader, node, node_type=_check_empty_str, parse_scalars=False)
+    return _make_node(loader, node, node_type=RequiredNode)
 
 
 @rethrow_as_parsing_error_impl
@@ -313,20 +309,13 @@ def _required_constructor_md(loader, tag_suffix, node):
     kwargs['metadata'] = metadata
 
     from .nodes.required import RequiredNode
-    def _check_empty_str(arg, **kwargs):
-        if arg != '':
-            raise ValueError(f'!required node does not expect any arguments - got: {arg}')
-        return RequiredNode(**kwargs)
-    return _make_node(loader, node, kwargs=kwargs, node_type=_check_empty_str)
+    return _make_node(loader, node, kwargs=kwargs, node_type=RequiredNode)
 
 
 @rethrow_as_parsing_error_impl
 def _none_constructor(loader, node):
-    def _check_empty_str(arg, *args, **kwargs):
-        if arg != '' or args:
-            raise ValueError(f'!null does not expect any arguments - got: {[arg]+list(args)}')
-        return None
-    return _make_node(loader, node, node_type=_check_empty_str)
+    from .nodes.scalar import ConfigScalar
+    return _make_node(loader, node, node_type=ConfigScalar(type(None)))
 
 
 @rethrow_as_parsing_error_impl
@@ -339,11 +328,8 @@ def _none_constructor_md(loader, tag_suffix, node):
 
     kwargs['metadata'] = metadata
 
-    def _check_empty_str(arg, *args, **kwargs):
-        if arg != '' or args:
-            raise ValueError(f'!null does not expect any arguments - got: {[arg]+list(args)}')
-        return None
-    return _make_node(loader, node, kwargs=kwargs, node_type=_check_empty_str)
+    from .nodes.scalar import ConfigScalar
+    return _make_node(loader, node, kwargs=kwargs, node_type=ConfigScalar(type(None)))
 
 
 @rethrow_as_parsing_error_impl
