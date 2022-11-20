@@ -18,13 +18,13 @@ from .. import utils
 
 
 class ConfigList(ComposedNode, list):
+    _default_delete = True
+
     def __init__(self, value=None, **kwargs):
         value = value if value is not None else []
-        #ComposedNode.maybe_inherit_flags(value, kwargs)
         kwargs.setdefault('delete', True)
         ComposedNode.__init__(self, children={ i: v for i, v in enumerate(value) }, **kwargs)
         list.__init__(self, self._children.values())
-        self._default_delete = True
 
     def _validate_index(self, index, allow_append=False):
         if not isinstance(index, int):
@@ -123,7 +123,7 @@ class ConfigList(ComposedNode, list):
             self._children = { idx: child for idx, child in enumerate(self) }
 
     @namespace('ayns')
-    def merge(self, other):
+    def nested_merge(self, other, prefix):
         if not isinstance(other, ComposedNode):
             raise TypeError('ComposedNode expected')
 
@@ -139,7 +139,7 @@ class ConfigList(ComposedNode, list):
 
         other.ayns.filter_nodes(keep_if_exists)
 
-        return super().ayns.merge(other)
+        return super().ayns.nested_merge(other, prefix)
 
     @namespace('ayns')
     def on_evaluate(self, path, ctx):

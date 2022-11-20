@@ -17,10 +17,11 @@ from ..namespace import namespace, staticproperty
 
 
 class StreamNode(ConfigList):
+    _default_delete = False
+
     def __init__(self, builder, **kwargs):
         kwargs.setdefault('delete', False)
         super().__init__(builder.stages, **kwargs)
-        self._default_delete = False
         self.builder = builder
 
     @property

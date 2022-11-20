@@ -156,12 +156,12 @@ def _del_constructor(loader, node):
 
 @rethrow_as_parsing_error_impl
 def _weak_constructor(loader, node):
-    return _make_node(loader, node, kwargs={ 'merge_mode': ConfigNode.WEAK })
+    return _make_node(loader, node, kwargs={ 'priority': ConfigNode.WEAK })
 
 
 @rethrow_as_parsing_error_impl
 def _force_constructor(loader, node):
-    return _make_node(loader, node, kwargs={ 'merge_mode': ConfigNode.FORCE })
+    return _make_node(loader, node, kwargs={ 'priority': ConfigNode.FORCE })
 
 
 @rethrow_as_parsing_error_impl
@@ -350,6 +350,16 @@ def _path_constructor(loader, tag_suffix, node):
 
 
 @rethrow_as_parsing_error_impl
+def _new_constructor(loader, node):
+    return _make_node(loader, node, kwargs={ 'allow_new': True })
+
+
+@rethrow_as_parsing_error_impl
+def _notnew_constructor(loader, node):
+    return _make_node(loader, node, kwargs={ 'allow_new': False })
+
+
+@rethrow_as_parsing_error_impl
 def make_call_node_with_fixed_func(loader, node, func):
     from .nodes.call import CallNode
     return _make_node(loader, node, node_type=CallNode, kwargs={ 'func': func }, data_arg_name='args')
@@ -382,6 +392,8 @@ yaml.add_constructor('!null', _none_constructor)
 yaml.add_multi_constructor('!null:', _none_constructor_md)
 yaml.add_multi_constructor('!path:', _path_constructor)
 yaml.add_constructor('!path', _simple_path_constructor)
+yaml.add_constructor('!new', _new_constructor)
+yaml.add_constructor('!notnew', _notnew_constructor)
 
 
 def _node_representer(dumper, node):
@@ -395,7 +407,7 @@ def _node_representer(dumper, node):
     type_defaults = node.ayns.get_default_mode()
 
     tags_to_infer = {
-        'merge_mode': {
+        'priority': {
             ConfigNode.STANDARD: '',
             ConfigNode.WEAK: '!weak',
             ConfigNode.FORCE: '!force'
@@ -403,6 +415,10 @@ def _node_representer(dumper, node):
         'delete': {
             True: '!del',
             False: '!merge'
+        },
+        'allow_new': {
+            True: '!new',
+            False: '!notnew'
         }
     }
 

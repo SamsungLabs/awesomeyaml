@@ -1,0 +1,13 @@
+---
+f:
+  bar: 1
+  car: [1, 2]
+---
+f: !notnew
+  car: !new [10, 20, 30]
+
+
+###EXPECTED
+f:
+  bar: 1
+  car: [10, 20, 30]

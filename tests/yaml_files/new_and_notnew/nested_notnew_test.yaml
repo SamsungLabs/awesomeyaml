@@ -1,0 +1,18 @@
+---
+f:
+  bar: 1
+  car:
+    dar: 2
+    ear: 3
+---
+f: !notnew
+  car:
+    dar: 20
+
+
+###EXPECTED
+f:
+  bar: 1
+  car:
+    dar: 20
+    ear: 3

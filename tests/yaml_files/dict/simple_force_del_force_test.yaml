@@ -2,7 +2,7 @@
 a: !force
     b: 1
 ---
-a: !metadata{{ 'delete': True, 'merge_mode': 1 }}
+a: !metadata{{ 'delete': True, 'priority': 1 }}
     c: 2
 
 ###EXPECTED

@@ -17,6 +17,8 @@ from ..namespace import namespace, staticproperty
 
 
 class FunctionNode(ConfigDict):
+    _default_delete = True
+
     def __init__(self, func, args=None, **kwargs):
         ''' Func can be either str naming a function, or a pair (name, args) in which case args should be None
         '''
@@ -39,16 +41,14 @@ class FunctionNode(ConfigDict):
             else:
                 args = { 0: args }
 
-        if not kwargs.get('delete', None):
-            kwargs.setdefault('delete', True)
+        kwargs.setdefault('delete', True)
         super().__init__(args, **kwargs)
-        self._default_delete = True
 
     def __bool__(self):
         return bool(self._func)
 
     @namespace('ayns')
-    def merge(self, other):
+    def nested_merge(self, other, prefix):
         if isinstance(other, str):
             self._func = other
             self.clear()
@@ -62,7 +62,7 @@ class FunctionNode(ConfigDict):
         except AttributeError:
             pass
 
-        return super().ayns.merge(other)
+        return super().ayns.nested_merge(other, prefix)
 
     @namespace('ayns')
     def on_evaluate(self, path, ctx):

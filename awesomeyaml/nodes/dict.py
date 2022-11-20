@@ -102,11 +102,11 @@ class ConfigDict(ComposedNode, dict):
         return val
 
     @namespace('ayns')
-    def merge(self, other):
+    def nested_merge(self, other, prefix):
         if not isinstance(other, dict) and not isinstance(other, cabc.Sequence):
             raise TypeError('Dict or sequence expected')
 
-        return super().ayns.merge(other)
+        return super().ayns.nested_merge(other, prefix)
 
     @namespace('ayns')
     def on_evaluate(self, path, ctx):

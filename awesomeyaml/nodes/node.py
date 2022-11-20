@@ -21,6 +21,13 @@ from ..namespace import NamespaceableMeta, Namespace, staticproperty
 from ..utils import persistent_id
 
 
+_kwargs_to_inherit = [
+    'priority',
+    'implicit_delete',
+    'implicit_allow_new'
+]
+
+
 class ConfigNodeMeta(NamespaceableMeta):
     def __call__(cls,
             *args,
@@ -40,6 +47,9 @@ class ConfigNodeMeta(NamespaceableMeta):
             if not has_value:
                 raise ValueError('Cannot deduce target type without a positional argument - deduction is always done w.r.t. the first argument')
             if isinstance(value, ConfigNode):
+                for arg_name in _kwargs_to_inherit:
+                    if arg_name in kwargs:
+                        setattr(value, '_' + arg_name, kwargs[arg_name])
                 return value
             else:
                 from .dict import ConfigDict
@@ -89,14 +99,18 @@ class ConfigNode(metaclass=ConfigNodeMeta):
 
     special_metadata_names = [
         'idx',
-        'merge_mode',
+        'priority',
         'delete',
+        'allow_new',
         'source_file',
         'dependencies',
         'users'
     ]
 
     _default_filename = threading.local()
+    _default_priority = STANDARD
+    _default_delete = False
+    _default_allow_new = True
 
     @staticmethod
     @contextlib.contextmanager
@@ -111,18 +125,24 @@ class ConfigNode(metaclass=ConfigNodeMeta):
         finally:
             ConfigNode._default_filename.value = old
 
-    def __init__(self, idx=None, merge_mode=None, delete=None, metadata=None, source_file=None, implicit_delete=False):
-        if merge_mode not in [None, 0, ConfigNode.WEAK, ConfigNode.FORCE]:
-            raise ValueError(f'Unknown merge mode value: {merge_mode}')
+    def __init__(self, idx=None, priority=None, delete=None, allow_new=None, metadata=None, source_file=None, implicit_delete=None, implicit_allow_new=None):
+        ''' '''
+
+        """ There's a lit bit going on with merging flags here, basically the main idea is that we have 3 sources of flags, they are (in the precedence order):
+                 - explicit merging-controlling information attached to this node (highest precedence), this are passed as "delete", "allow_new", etc.
+                 - merging flags inherited from a parent node (aka implicit flags) - these can only have not-None value if there's an ancestor node with explicit flag, however the immediate parent does not have to have a flag specified explicitly
+                 - a node type's defaults
+        """
+        if priority not in [None, ConfigNode.STANDARD, ConfigNode.WEAK, ConfigNode.FORCE]:
+            raise ValueError(f'Unknown priority value: {priority}')
         self._idx = idx
-        self._merge_mode = merge_mode
+        self._priority = priority
         self._delete = delete
+        self._allow_new = allow_new
         self._implicit_delete = implicit_delete
+        self._implicit_allow_new = implicit_allow_new
         self._source_file = source_file if source_file is not None else getattr(ConfigNode._default_filename, 'value', None)
         self._metadata = metadata or {}
-
-        self._default_merge_mode = ConfigNode.STANDARD
-        self._default_delete = False
 
     def __repr__(self, simple=False):
         return f'<Object {type(self).__name__!r} at 0x{id(self):02x}>'
@@ -133,28 +153,37 @@ class ConfigNode(metaclass=ConfigNodeMeta):
             return self._idx
 
         @property
-        def merge_mode(self):
-            if self._merge_mode is None:
-                return self._default_merge_mode
+        def priority(self):
+            if self._priority is None:
+                return self._default_priority
 
-            return self._merge_mode
+            return self._priority
 
         @property
         def weak(self):
-            return self.ayns.merge_mode == ConfigNode.WEAK
+            return self.ayns.priority == ConfigNode.WEAK
 
         @property
         def force(self):
-            return self.ayns.merge_mode == ConfigNode.FORCE
+            return self.ayns.priority == ConfigNode.FORCE
 
         @property
         def delete(self):
             if self._delete is None:
-                if self._implicit_delete:
-                    return True
+                if self._implicit_delete is not None:
+                    return self._implicit_delete
                 return self._default_delete
 
             return self._delete
+
+        @property
+        def allow_new(self):
+            # if self._allow_new is None:
+            if self._implicit_allow_new is not None:
+                return self._implicit_allow_new
+            return self._default_allow_new
+
+            # return self._allow_new
 
         @property
         def explicit_delete(self):
@@ -198,9 +227,9 @@ class ConfigNode(metaclass=ConfigNodeMeta):
             return None
 
         def has_priority_over(self, other, if_equal=False):
-            if self.ayns.merge_mode == other.ayns.merge_mode:
+            if self.ayns.priority == other.ayns.priority:
                 return if_equal
-            return self.ayns.merge_mode > other.ayns.merge_mode
+            return self.ayns.priority > other.ayns.priority
 
         def preprocess(self, builder):
             return self.ayns.on_preprocess([], builder)
@@ -214,9 +243,6 @@ class ConfigNode(metaclass=ConfigNodeMeta):
         def on_premerge(self, path, into):
             return self
 
-        def evaluate(self):
-            return self.ayns.evaluate_node([], self)
-
         def evaluate_node(self, path, root):
             evaluated = self.ayns.on_evaluate(path, root)
             assert evaluated is not self
@@ -226,34 +252,50 @@ class ConfigNode(metaclass=ConfigNodeMeta):
         def on_evaluate(self, path, ctx):
             return self.ayns.value
 
+        def merge(self, other):
+            self.premerge(other)
+
+            if other is None:
+                if not self.ayns.allow_new:
+                    raise ValueError('A top-level destination node does not exist but this top-level node has a !notnew flag enabled!')
+                return self
+
+            if self.ayns.has_priority_over(other):
+                return self
+            return other
+
         def get_node_info_to_save(self):
             ''' This function should return a dict with values which one wants to preserve when dumping the node.
             '''
             # by default we don't care about node idx or source file (after dumping this will change anyway)
-            # we care about custom metadata and "merge_mode" and "delete"
-            # Note that "merge_mode" and "delete" might be optimized out from the dump output if
+            # we care about custom metadata and "priority" and "delete"
+            # Note that "priority" and "delete" might be optimized out from the dump output if
             # they would be set by the parent (dumping function holds a stack of which metadata are "default"
             # and does not produce anything which is aligned with the defaults)
             ret = copy.copy(self._metadata)
-            ret['merge_mode'] = self._merge_mode
+            ret['priority'] = self._priority
             ret['delete'] = self._delete #if not self._implicit_delete else None
+            ret['allow_new'] = self._allow_new
             return ret
 
         @property
         def node_info(self):
             return {
                 'idx': self._idx,
-                'merge_mode': self._merge_mode,
+                'priority': self._priority,
                 'delete': self._delete,
                 'implicit_delete': self._implicit_delete,
+                'allow_new': self._allow_new,
+                'implicit_allow_new': self._implicit_allow_new,
                 'source_file': self._source_file,
                 'metadata': self._metadata
             }
 
         def get_default_mode(self):
             return {
-                'merge_mode': self._default_merge_mode,
-                'delete': self._default_delete
+                'priority': self._default_priority,
+                'delete': self._default_delete,
+                'allow_new': self._default_allow_new
             }
 
         def represent(self):

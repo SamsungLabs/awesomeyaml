@@ -1,0 +1,12 @@
+---
+f:
+  bar: 1
+  car: [1, 2]
+---
+f: !notnew
+  car: [10, 20, 30]
+
+
+###ERROR
+ValueError
+Node 'f.car\[2\]' .*
