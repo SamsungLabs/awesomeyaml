@@ -58,7 +58,9 @@ class FunctionNode(ConfigDict):
             raise TypeError('Conflicting FunctionNode subclasses')
 
         try:
-            self._func = other._func
+            if self._func != other._func:
+                self.clear()
+                self._func = other._func
         except AttributeError:
             pass
 

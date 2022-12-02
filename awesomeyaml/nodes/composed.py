@@ -272,7 +272,7 @@ class ComposedNode(ConfigNode):
         def replace_node(self, new_node, *path):
             raise NotImplementedError()
 
-        def filter_nodes(self, condition, prefix=None):
+        def filter_nodes(self, condition, prefix=None, removed=None):
             prefix = ComposedNode.get_list_path(prefix, check_types=False) or NodePath()
             to_del = []
             to_re_set = []
@@ -282,8 +282,8 @@ class ComposedNode(ConfigNode):
                 if condition(child_path, child):
                     keep = True
                 if isinstance(child, ComposedNode): #not child.ayns.is_leaf:
-                    possibly_new_child = child.ayns.filter_nodes(condition, prefix=child_path)
-                    keep = keep and bool(possibly_new_child)
+                    possibly_new_child = child.ayns.filter_nodes(condition, prefix=child_path, removed=removed)
+                    keep = keep or bool(possibly_new_child)
                     if keep and possibly_new_child is not child:
                         to_re_set.append(name, possibly_new_child)
 
@@ -292,6 +292,8 @@ class ComposedNode(ConfigNode):
 
             for name in reversed(to_del):
                 self.ayns.remove_child(name)
+                if removed is not None:
+                    removed.add(prefix + [name])
             for name, child in to_re_set:
                 self.ayns.set_child(name, child)
 
@@ -407,12 +409,10 @@ class ComposedNode(ConfigNode):
                 removed = set()
                 def maybe_keep(path, node):
                     other_node = other.ayns.get_first_not_missing_node(path)
-                    ret = node.ayns.has_priority_over(other_node)
-                    if not ret:
-                        removed.add(path)
-                    return ret
+                    return node.ayns.has_priority_over(other_node)
 
-                self.ayns.filter_nodes(maybe_keep, prefix=prefix)
+
+                self.ayns.filter_nodes(maybe_keep, prefix=prefix, removed=removed)
                 if not self._children and other.ayns.has_priority_over(self, if_equal=True):
                     removed.add(prefix)
                     require_all_new(other, prefix, f'note: the entire config tree under {prefix!r} has been removed due to node merging with a !del node', exceptions=removed)

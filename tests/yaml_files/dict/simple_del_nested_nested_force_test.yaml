@@ -1,0 +1,13 @@
+---
+a:
+    b:
+        c: !force 1
+---
+a: !del
+    b:
+        c: 2
+
+###EXPECTED
+a:
+    b:
+        c: 1

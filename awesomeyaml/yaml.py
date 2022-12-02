@@ -69,8 +69,15 @@ def _encode_metadata(metadata):
 
 def _decode_metadata(encoded):
     if not encoded:
-        return None
-    return pickle.loads(bytes.fromhex(encoded))
+        return {}
+    metadata = pickle.loads(bytes.fromhex(encoded))
+    kwargs = {}
+    for special in ConfigNode.special_metadata_names:
+        if special in metadata:
+            kwargs[special] = metadata.pop(special)
+
+    kwargs['metadata'] = metadata
+    return kwargs
 
 
 def parse_scalar(loader, node):
@@ -177,13 +184,7 @@ def _append_constructor(loader, node):
 
 @rethrow_as_parsing_error_impl
 def _metadata_constructor(loader, tag_suffix, node):
-    metadata = _decode_metadata(tag_suffix)
-    kwargs = {}
-    for special in ConfigNode.special_metadata_names:
-        if special in metadata:
-            kwargs[special] = metadata.pop(special)
-
-    kwargs['metadata'] = metadata
+    kwargs = _decode_metadata(tag_suffix)
     return _make_node(loader, node, kwargs=kwargs)
 
 
@@ -206,15 +207,8 @@ def _xref_constructor(loader, node):
 
 @rethrow_as_parsing_error_impl
 def _xref_constructor_md(loader, tag_suffix, node):
-    metadata = _decode_metadata(tag_suffix)
-    kwargs = {}
-    for special in ConfigNode.special_metadata_names:
-        if special in metadata:
-            kwargs[special] = metadata.pop(special)
-
-    kwargs['metadata'] = metadata
-
     from .nodes.xref import XRefNode
+    kwargs = _decode_metadata(tag_suffix)
     return _make_node(loader, node, kwargs=kwargs, node_type=XRefNode, parse_scalars=False)
 
 
@@ -231,8 +225,8 @@ def _bind_constructor(loader, tag_suffix, node):
         raise ValueError(f'Invalid bind tag: !bind:{tag_suffix}')
 
     target_f_name, metadata = pad_with_none(*tag_suffix.split(':', maxsplit=1), minlen=2)
-    metadata = _decode_metadata(metadata)
-    return _make_node(loader, node, node_type=BindNode, kwargs={ 'func': target_f_name, 'metadata': metadata }, data_arg_name='args')
+    kwargs = _decode_metadata(metadata)
+    return _make_node(loader, node, node_type=BindNode, kwargs={ 'func': target_f_name, **kwargs }, data_arg_name='args')
 
 
 @rethrow_as_parsing_error_impl
@@ -248,20 +242,14 @@ def _call_constructor(loader, tag_suffix, node):
         raise ValueError(f'Invalid call tag: !call:{tag_suffix}')
 
     target_f_name, metadata = pad_with_none(*tag_suffix.split(':', maxsplit=1), minlen=2)
-    metadata = _decode_metadata(metadata)
-    return _make_node(loader, node, node_type=CallNode, kwargs={ 'func': target_f_name, 'metadata': metadata }, data_arg_name='args')
+    kwargs = _decode_metadata(metadata)
+    return _make_node(loader, node, node_type=CallNode, kwargs={ 'func': target_f_name, **kwargs }, data_arg_name='args')
 
 
 @rethrow_as_parsing_error_impl
 def _eval_constructor(loader, tag_suffix, node):
     from .nodes.eval import EvalNode
-    metadata = _decode_metadata(tag_suffix)
-    kwargs = {}
-    for special in ConfigNode.special_metadata_names:
-        if special in metadata:
-            kwargs[special] = metadata.pop(special)
-
-    kwargs['metadata'] = metadata
+    kwargs = _decode_metadata(tag_suffix)
     return _make_node(loader, node, node_type=EvalNode, kwargs=kwargs, parse_scalars=False)
 
 
@@ -300,15 +288,8 @@ def _required_constructor(loader, node):
 
 @rethrow_as_parsing_error_impl
 def _required_constructor_md(loader, tag_suffix, node):
-    metadata = _decode_metadata(tag_suffix)
-    kwargs = {}
-    for special in ConfigNode.special_metadata_names:
-        if special in metadata:
-            kwargs[special] = metadata.pop(special)
-
-    kwargs['metadata'] = metadata
-
     from .nodes.required import RequiredNode
+    kwargs = _decode_metadata(tag_suffix)
     return _make_node(loader, node, kwargs=kwargs, node_type=RequiredNode)
 
 
@@ -320,15 +301,8 @@ def _none_constructor(loader, node):
 
 @rethrow_as_parsing_error_impl
 def _none_constructor_md(loader, tag_suffix, node):
-    metadata = _decode_metadata(tag_suffix)
-    kwargs = {}
-    for special in ConfigNode.special_metadata_names:
-        if special in metadata:
-            kwargs[special] = metadata.pop(special)
-
-    kwargs['metadata'] = metadata
-
     from .nodes.scalar import ConfigScalar
+    kwargs = _decode_metadata(tag_suffix)
     return _make_node(loader, node, kwargs=kwargs, node_type=ConfigScalar(type(None)))
 
 
@@ -345,8 +319,8 @@ def _path_constructor(loader, tag_suffix, node):
         raise ValueError(f'Invalid path tag: !path:{tag_suffix}')
 
     ref_point, metadata = pad_with_none(*tag_suffix.rsplit(':', maxsplit=1), minlen=2)
-    metadata = _decode_metadata(metadata)
-    return _make_node(loader, node, node_type=PathNode, kwargs={ 'ref_point': ref_point, 'src_filename': loader.context.get_current_file(), 'metadata': metadata }, dict_is_data=False)
+    kwargs = _decode_metadata(metadata)
+    return _make_node(loader, node, node_type=PathNode, kwargs={ 'ref_point': ref_point, 'src_filename': loader.context.get_current_file(), **kwargs }, dict_is_data=False)
 
 
 @rethrow_as_parsing_error_impl

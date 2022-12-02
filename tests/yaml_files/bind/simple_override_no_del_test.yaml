@@ -1,0 +1,13 @@
+---
+f: !bind:tests.utils.linear_f
+    a: 2
+    b: 1
+
+---
+f: !bind:tests.utils.cubic_f{{ 'delete': False }}
+    b: 3
+
+###VALIDATE
+from tests.utils import cubic_f
+self.assertIs(result.f.func, cubic_f)
+self.assertEqual(result.f(2), 11)

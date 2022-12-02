@@ -1,0 +1,12 @@
+---
+f: !bind:tests.utils.dummy
+  more:
+    a: !force 2
+
+---
+f: !bind:tests.utils.dummy
+  more:
+    a: 123
+
+###VALIDATE
+self.assertEqual(result.f()[1]['more']['a'], 2)
