@@ -1,0 +1,14 @@
+---
+foo:
+  bar: 1
+---
+foo: 2
+---
+!notnew
+foo:
+  test: 3
+
+
+###ERROR
+ValueError
+Node 'foo.test' .*

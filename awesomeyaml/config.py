@@ -61,27 +61,42 @@ class Config(Bunch, metaclass=NamespaceableMeta):
         return Config(b.build())
 
     @classmethod
-    def process_cmdline(cls, args, filename_lookup_fn=None):
+    def process_cmdline(cls, args, filename_lookup_fn=None, default_inline_tag='!notnew'):
         yamls = []
         filenames = []
         raw_yamls = []
 
         def append(idx, option):
+            option = option.strip()
             if option.startswith('{') and option.endswith('}'):
                 yaml = option
                 filename = f'<Commandline argument #{idx}>'
                 raw_yaml = True
             elif '=' in option:
-                key, value = option.split('=', maxsplit=1)
+                key, value = [o.strip() for o in option.split('=', maxsplit=1)]
                 yaml = ''
+                if key[0:1] != '!' and default_inline_tag:
+                    yaml = default_inline_tag + '\n'
+
                 ind = 0
                 for part in key.split('.'):
+                    part = part.strip()
                     if ind:
                         yaml += '\n'
                         yaml += '    ' * ind
 
+                    indices = []
+                    while part.endswith(']'):
+                        b = part.rfind('[')
+                        index = int(part[b+1:-1])
+                        part = part[:b]
+                        indices.insert(0, index)
+
                     yaml += part + ': '
                     ind += 1
+                    for i in indices:
+                        yaml += f'\n{"    " * ind}{i}: '
+                        ind += 1
 
                 yaml += value
                 filename = f'<Commandline argument #{idx}>'
@@ -98,7 +113,7 @@ class Config(Bunch, metaclass=NamespaceableMeta):
             raw_yamls.append(raw_yaml)
 
         for i, src in enumerate(args):
-            append(i, src)
+            append(i+1, src)
 
         return yamls, filenames, raw_yamls
 

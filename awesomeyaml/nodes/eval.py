@@ -20,9 +20,7 @@ from ..utils import Bunch
 
 import os
 import sys
-import copy
 import types
-import ctypes
 import hashlib
 
 
@@ -60,7 +58,7 @@ class EvalNode(ConfigScalar(str)):
     '''
     _top_namespace_module_name = 'awesomeyaml.eval_node_namespace'
 
-    def __init__(self, value, persistent_namespace=True, source_file=None, **kwargs):
+    def __init__(self, value, persistent_namespace=True, **kwargs):
         super().__init__(value, **kwargs)
         self.persistent_namespace = persistent_namespace
 
@@ -86,7 +84,7 @@ class EvalNode(ConfigScalar(str)):
             ret = eval(lines[-1].strip(), gbls, lcls)
         except:
             et, e, _ = sys.exc_info()
-            raise EvalError(f'Exception occurred while evaluation an eval node {path!r} from file {str(self.ayns.source_file)!r}:\n\nCode:\n{os.linesep.join(lines)}\n\nError:\n{et.__name__}: {e}') from None
+            raise EvalError(f'Exception occurred while evaluation an eval node {path!r} from file {str(self._source_file)!r}:\n\nCode:\n{os.linesep.join(lines)}\n\nError:\n{et.__name__}: {e}') from None
 
         if len(lines) > 1 and self.persistent_namespace:
             eval_node_module = types.ModuleType(eval_module_name, 'Dynamic module to evaluate awesomeyaml !eval node')

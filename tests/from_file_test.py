@@ -37,7 +37,6 @@ class CreateFromFileTest(unittest.TestCase):
         self.assertEqual(cfg.test2.bar, True)
 
     def test_yaml(self):
-        import io
         from awesomeyaml.config import Config
         cfg = Config.build(self._file_content)
         self._check_test_obj(cfg)

@@ -101,6 +101,10 @@ class ConfigDict(ComposedNode, dict):
             #val.set_parent(None, None)
         return val
 
+    def update(self, other):
+        for k, v in other.items():
+            self._set(k, v)
+
     @namespace('ayns')
     def nested_merge(self, other, prefix):
         if not isinstance(other, dict) and not isinstance(other, cabc.Sequence):
@@ -131,7 +135,7 @@ class ConfigDict(ComposedNode, dict):
         return self
 
     def _get_native_value(self):
-        return dict((k,v.ayns.native_value) for k,v in self.items())
+        return dict((k.ayns.native_value,v.ayns.native_value) for k,v in self.items())
 
     def _set_value(self, other):
         self.clear()

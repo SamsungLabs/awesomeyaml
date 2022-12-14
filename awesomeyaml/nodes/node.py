@@ -24,7 +24,8 @@ from ..utils import persistent_id
 _kwargs_to_inherit = [
     'priority',
     'implicit_delete',
-    'implicit_allow_new'
+    'implicit_allow_new',
+    'pyyaml_node'
 ]
 
 
@@ -125,7 +126,7 @@ class ConfigNode(metaclass=ConfigNodeMeta):
         finally:
             ConfigNode._default_filename.value = old
 
-    def __init__(self, idx=None, priority=None, delete=None, allow_new=None, metadata=None, source_file=None, implicit_delete=None, implicit_allow_new=None):
+    def __init__(self, idx=None, priority=None, delete=None, allow_new=None, metadata=None, source_file=None, implicit_delete=None, implicit_allow_new=None, pyyaml_node=None):
         ''' '''
 
         """ There's a lit bit going on with merging flags here, basically the main idea is that we have 3 sources of flags, they are (in the precedence order):
@@ -143,6 +144,7 @@ class ConfigNode(metaclass=ConfigNodeMeta):
         self._implicit_allow_new = implicit_allow_new
         self._source_file = source_file if source_file is not None else getattr(ConfigNode._default_filename, 'value', None)
         self._metadata = metadata or {}
+        self._pyyaml_node = pyyaml_node
 
     def __repr__(self, simple=False):
         return f'<Object {type(self).__name__!r} at 0x{id(self):02x}>'
@@ -305,3 +307,9 @@ class ConfigNode(metaclass=ConfigNodeMeta):
                 mapping, sequence or scalar).
             '''
             return self.ayns.tag, self.ayns.get_node_info_to_save(), self.ayns.value
+
+        def _require_all_new(self, path, reason, exceptions=None, include_self=True):
+            if not include_self:
+                return
+            if not self.ayns.allow_new and (exceptions is None or path not in exceptions):
+                raise ValueError(f'Node {path!r} (source file: {self._source_file!r}) requires that the destination already exists but the current config tree does not contain a node under this path ({reason})')

@@ -132,22 +132,48 @@ class ComposedNode(ConfigNode):
             raise ValueError(f'Unexpected type: {type(path)}, expected int, sequence or str')
         return path
 
+    def _get_child_kwargs(self):
+        ret = {}
+        ret['implicit_delete'] = (self._delete if self._delete is not None else self._implicit_delete)
+        ret['implicit_allow_new'] = (self._allow_new if self._allow_new is not None else self._implicit_delete)
+        return ret
+
+    def _propagate_implicit_values(self):
+        if self._implicit_delete is None and self._implicit_allow_new is None:
+            return
+        if self._delete is not None and self._allow_new is not None:
+            return
+
+        for child in self._children.values():
+            fix = False
+            if self._delete is None:
+                if child._implicit_delete != self._implicit_delete:
+                    child._implicit_delete = self._implicit_delete
+                    fix = True
+            if self._allow_new is None:
+                if child._implicit_allow_new != self._implicit_allow_new:
+                    child._implicit_allow_new = self._implicit_allow_new
+                    fix = True
+
+            if fix and isinstance(child, ComposedNode):
+                child._propagate_implicit_values()
+
     def __init__(self, children, nodes_memo=None, **kwargs):
         super().__init__(**kwargs)
         kwargs.pop('idx', None)
         kwargs.pop('metadata', None)
-        if kwargs.get('delete') is not None:
-            kwargs['implicit_delete'] = kwargs.pop('delete')
-        if kwargs.get('allow_new') is not None:
-            kwargs['implicit_allow_new'] = kwargs.pop('allow_new')
-
+        kwargs.pop('delete', None)
+        kwargs.pop('allow_new', None)
+        kwargs.update(self._get_child_kwargs())
         nodes_memo = nodes_memo if nodes_memo is not None else {}
         self._children = { name: ConfigNode(child, **kwargs, nodes_memo=nodes_memo) for name, child in children.items() } # pylint: disable=unexpected-keyword-arg
 
     class ayns(Namespace):
         def set_child(self, name, value):
-            value = ConfigNode(value)
+            value = ConfigNode(value, **self._get_child_kwargs())
             self._children[name] = value
+            if isinstance(value, ComposedNode):
+                value._propagate_implicit_values()
             return value
 
         def remove_child(self, name):
@@ -395,16 +421,6 @@ class ComposedNode(ConfigNode):
             return self.ayns.map_nodes(lambda path, node: node.ayns.on_premerge(path, into), cache_results=True, leafs_only=False)
 
         def nested_merge(self, other, prefix):
-            def require_all_new(node, path, reason, exceptions=None):
-                if not isinstance(node, ComposedNode):
-                    seq = [(path, node)]
-                else:
-                    seq = node.ayns.nodes_with_paths(prefix=path, include_self=True)
-
-                for p, n in seq:
-                    if not n.ayns.allow_new and (exceptions is None or p not in exceptions):
-                        raise ValueError(f'Node {p!r} (source file: {n.ayns.source_file!r}) requires that the destination already exists but the current config tree does not contain a node under this path ({reason})')
-
             if other.ayns.delete:
                 removed = set()
                 def maybe_keep(path, node):
@@ -415,16 +431,17 @@ class ComposedNode(ConfigNode):
                 self.ayns.filter_nodes(maybe_keep, prefix=prefix, removed=removed)
                 if not self._children and other.ayns.has_priority_over(self, if_equal=True):
                     removed.add(prefix)
-                    require_all_new(other, prefix, f'note: the entire config tree under {prefix!r} has been removed due to node merging with a !del node', exceptions=removed)
+                    other.ayns._require_all_new(prefix, f'note: the entire config tree under {prefix!r} has been removed due to node merging with a !del node', exceptions=removed)
                     return other
+
+            _this_path = ComposedNode.get_str_path(prefix)
+            if not _this_path:
+                _this_path = '<top-level node>'
 
             for key, value in other._children.items():
                 child = self.ayns.get_child(key, None)
                 if child is None:
-                    _this_path = ComposedNode.get_str_path(prefix)
-                    if not _this_path:
-                        _this_path = '<top-level node>'
-                    require_all_new(value, prefix + [key], f'last parent: {_this_path!r}, from file: {self.ayns.source_file!r}')
+                    value.ayns._require_all_new(prefix + [key], f'last parent: {_this_path!r}, from file: {self.ayns.source_file!r}')
                     self.ayns.set_child(key, value)
                 else:
                     merge = False
@@ -441,6 +458,7 @@ class ComposedNode(ConfigNode):
                             self.ayns.set_child(key, possibly_new_child)
                             possibly_new_child._metadata = { **child._metadata, **possibly_new_child._metadata }
                     else:
+                        value.ayns._require_all_new(prefix + [key], f'last parent: {_this_path!r}, from file: {self.ayns.source_file!r}', include_self=False)
                         if value.ayns.has_priority_over(child, if_equal=True):
                             if not value and value.ayns.explicit_delete:
                                 self.ayns.remove_child(key)
@@ -460,14 +478,19 @@ class ComposedNode(ConfigNode):
 
         def merge(self, other):
             other.ayns.premerge(self)
-            if other is None and not self.ayns.allow_new:
-                raise ValueError('A top-level destination node does not exist but this top-level node has a !notnew flag enabled!')
             return self.ayns.nested_merge(other, prefix=NodePath())
 
         @staticproperty
         @staticmethod
         def is_leaf():
             return False
+
+        def _require_all_new(self, path, reason, exceptions=None, include_self=True):
+            seq = self.ayns.nodes_with_paths(prefix=path, include_self=include_self)
+            for p, n in seq:
+                if not n.ayns.allow_new and (exceptions is None or p not in exceptions):
+                    raise ValueError(f'Node {p!r} (source file: {n.ayns.source_file!r}) requires that the destination already exists but the current config tree does not contain a node under this path ({reason})')
+
 
     def __getstate__(self):
         state = self.__dict__.copy()

@@ -1,0 +1,9 @@
+---
+!notnew
+foo:
+  bar:
+    car: 12
+
+###ERROR
+ValueError
+Node 'foo' .*

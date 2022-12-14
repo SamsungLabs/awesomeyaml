@@ -249,6 +249,7 @@ class Builder():
             except AttributeError:
                 self.stages[0] = new_stage
 
+        self.stages[0].ayns._require_all_new([], 'the node comes from the first config tree in a merging sequence and the current config is empty')
         if len(self.stages) < 2:
             return
 

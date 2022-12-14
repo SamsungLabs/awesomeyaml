@@ -65,8 +65,8 @@ class ConfigScalarMeta(ConfigNodeMeta):
     _rev_scalar_types = { value: key for key, value in _allowed_scalar_types.items() }
     _types = {}
 
-    def __init__(cls, name, bases, dict):
-        super().__init__(name, bases, dict)
+    def __init__(cls, name, bases, dict, **kwargs):
+        super().__init__(name, bases, dict, **kwargs)
         cls._bases = bases
         cls._dict = dict
 
@@ -187,7 +187,10 @@ class ConfigScalar(ConfigScalarMarker, metaclass=ConfigScalarMeta):
         state = self.__dict__.copy()
         return ConfigScalar, (self._get_native_value(), ), state # pylint: disable=no-member
 
-    def __eq__(self, other):
-        if isinstance(other, ConfigScalar):
-            other = other._get_native_value()
-        return self._get_native_value() == other
+    # def __eq__(self, other):
+    #     if isinstance(other, ConfigScalar):
+    #         other = other._get_native_value()
+    #     return self._get_native_value() == other
+
+    # def __hash__(self):
+    #     return self._get_native_value().__hash__()

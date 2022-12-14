@@ -32,6 +32,30 @@ _fstr_regex = re.compile(r"^\s*f(['\"]).*\1\s*$")
 _global_ctx = None
 
 
+class AwesomeyamlLoader(yaml.Loader):
+    def _convert(self, value, node):
+        if value is None and node.value == '':
+            return value
+        return ConfigNode(value, pyyaml_node=node)
+
+    @staticmethod
+    def _make_generator(value, update_fn):
+        yield
+        update_fn(value)
+
+    def construct_object(self, node, deep=False):
+        value = super().construct_object(node, deep=deep)
+        aynode = self._convert(value, node)
+
+        if not deep and value is not aynode:
+            if isinstance(node, yaml.SequenceNode):
+                self.state_generators.append(self._make_generator(value, aynode.extend))
+            elif isinstance(node, yaml.MappingNode):
+                self.state_generators.append(self._make_generator(value, aynode.update))
+
+        return aynode
+
+
 def rethrow_as_parsing_error_impl(func):
     def impl(*args, **kwargs):
         node = (args[2] if isinstance(args[1], str) else args[1])
@@ -89,7 +113,7 @@ def parse_scalar(loader, node):
     if ret is None and node.value != '':
         # we differentiate between explicit and implicit None
         # for explicit None, return ConfigNode(None) so that "value is None"
-        # evaluates for False, this is needed by e.g., FunctionNode to detect lack of
+        # evaluates to False, this is needed by e.g., FunctionNode to detect lack of
         # arguments (implicit None) and a single None argument (explicit None)
         return ConfigNode(None)
     return ret
@@ -569,17 +593,17 @@ def parse(data, filename_or_builder=None, config_nodes=True):
     with context_fn(filename_or_builder) as context:
         data = _encode_all_metadata(data)
         def get_loader(*args, **kwargs):
-            loader = yaml.Loader(*args, **kwargs)
+            loader = AwesomeyamlLoader(*args, **kwargs)
             loader.context = context
             loader.name = context.get_current_file()
             return loader
 
         try:
-            for raw in yaml.load_all(data, Loader=get_loader):
+            for node in yaml.load_all(data, Loader=get_loader):
                 if config_nodes:
-                    yield ConfigNode(raw)
+                    yield node
                 else:
-                    yield ConfigNode(raw).ayns.native_value
+                    yield node.ayns.native_value
         except errors.ParsingError as pe:
             if errors.shorten_traceback:
                 if errors.include_original_exception:

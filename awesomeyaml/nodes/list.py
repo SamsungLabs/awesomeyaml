@@ -15,6 +15,7 @@
 from .composed import ComposedNode
 from ..namespace import namespace, staticproperty
 from .. import utils
+from ..errors import MergeError
 
 
 class ConfigList(ComposedNode, list):
@@ -128,8 +129,14 @@ class ConfigList(ComposedNode, list):
             raise TypeError('ComposedNode expected')
 
         if isinstance(other, dict):
+            _missing_keys = []
             for key in other.ayns.children_names():
-                self._validate_index(key)
+                try:
+                    self._validate_index(key, allow_append=False)
+                except IndexError:
+                    _missing_keys.append(key)
+            if _missing_keys:
+                raise MergeError(f'merging a dict into a list requires all dict nodes to map to the existing indices in the list but the following keys are invalid: {_missing_keys}', self, other, prefix)
 
         def keep_if_exists(path, node):
             if not node.ayns.delete:
