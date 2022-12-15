@@ -36,7 +36,12 @@ class AwesomeyamlLoader(yaml.Loader):
     def _convert(self, value, node):
         if value is None and node.value == '':
             return value
-        return ConfigNode(value, pyyaml_node=node)
+        ret = ConfigNode(value, pyyaml_node=node)
+        if ret._idx is None:
+            ret._idx = self.context.get_next_stage_idx()
+        if ret._source_file is None:
+            ret._source_file = self.context.get_current_file()
+        return ret
 
     @staticmethod
     def _make_generator(value, update_fn):

@@ -51,6 +51,9 @@ class ConfigNodeMeta(NamespaceableMeta):
                 for arg_name in _kwargs_to_inherit:
                     if arg_name in kwargs:
                         setattr(value, '_' + arg_name, kwargs[arg_name])
+                if 'implicit_delete' in kwargs or 'implicit_allow_new' in kwargs:
+                    value._propagate_implicit_values()
+
                 return value
             else:
                 from .dict import ConfigDict
@@ -313,3 +316,6 @@ class ConfigNode(metaclass=ConfigNodeMeta):
                 return
             if not self.ayns.allow_new and (exceptions is None or path not in exceptions):
                 raise ValueError(f'Node {path!r} (source file: {self._source_file!r}) requires that the destination already exists but the current config tree does not contain a node under this path ({reason})')
+
+    def _propagate_implicit_values(self):
+        return

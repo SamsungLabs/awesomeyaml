@@ -74,16 +74,16 @@ class Config(Bunch, metaclass=NamespaceableMeta):
                 raw_yaml = True
             elif '=' in option:
                 key, value = [o.strip() for o in option.split('=', maxsplit=1)]
-                yaml = ''
-                if key[0:1] != '!' and default_inline_tag:
-                    yaml = default_inline_tag + '\n'
+                yaml = '{ '
+                if key[0] != '!' and default_inline_tag:
+                    yaml = default_inline_tag + ' { '
 
                 ind = 0
                 for part in key.split('.'):
-                    part = part.strip()
                     if ind:
-                        yaml += '\n'
-                        yaml += '    ' * ind
+                        yaml += ' { '
+
+                    part = part.strip()
 
                     indices = []
                     while part.endswith(']'):
@@ -95,10 +95,13 @@ class Config(Bunch, metaclass=NamespaceableMeta):
                     yaml += part + ': '
                     ind += 1
                     for i in indices:
-                        yaml += f'\n{"    " * ind}{i}: '
+                        yaml += f'{{ {i}: '
                         ind += 1
 
                 yaml += value
+                yaml += ' '
+                yaml += '}' * ind
+
                 filename = f'<Commandline argument #{idx}>'
                 raw_yaml = True
             else:

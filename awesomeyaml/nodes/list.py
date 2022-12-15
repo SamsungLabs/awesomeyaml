@@ -131,12 +131,15 @@ class ConfigList(ComposedNode, list):
         if isinstance(other, dict):
             _missing_keys = []
             for key in other.ayns.children_names():
+                first_missing = None
                 try:
                     self._validate_index(key, allow_append=False)
                 except IndexError:
-                    _missing_keys.append(key)
+                    _missing_keys.append(key.ayns.native_value)
+                    if first_missing is None:
+                        first_missing = key
             if _missing_keys:
-                raise MergeError(f'merging a dict into a list requires all dict nodes to map to the existing indices in the list but the following keys are invalid: {_missing_keys}', self, other, prefix)
+                raise MergeError(f'merging a dict into a list requires all dict nodes to map to the existing indices in the list but the following keys are invalid: {_missing_keys}', self, first_missing, prefix)
 
         def keep_if_exists(path, node):
             if not node.ayns.delete:

@@ -134,11 +134,15 @@ class ComposedNode(ConfigNode):
 
     def _get_child_kwargs(self):
         ret = {}
+        if not hasattr(self, '_delete'): # happens when unpickling! children are being populated before attributes are set, but its ok since we assume pickled objects are ok anyway, so no need to fix things
+            return ret
         ret['implicit_delete'] = (self._delete if self._delete is not None else self._implicit_delete)
-        ret['implicit_allow_new'] = (self._allow_new if self._allow_new is not None else self._implicit_delete)
+        ret['implicit_allow_new'] = (self._allow_new if self._allow_new is not None else self._implicit_allow_new)
         return ret
 
     def _propagate_implicit_values(self):
+        if not hasattr(self, '_delete'): # happens when unpickling! children are being populated before attributes are set, but its ok since we assume pickled objects are ok anyway, so no need to fix things
+            return
         if self._implicit_delete is None and self._implicit_allow_new is None:
             return
         if self._delete is not None and self._allow_new is not None:
@@ -155,7 +159,7 @@ class ComposedNode(ConfigNode):
                     child._implicit_allow_new = self._implicit_allow_new
                     fix = True
 
-            if fix and isinstance(child, ComposedNode):
+            if fix:
                 child._propagate_implicit_values()
 
     def __init__(self, children, nodes_memo=None, **kwargs):
@@ -172,8 +176,7 @@ class ComposedNode(ConfigNode):
         def set_child(self, name, value):
             value = ConfigNode(value, **self._get_child_kwargs())
             self._children[name] = value
-            if isinstance(value, ComposedNode):
-                value._propagate_implicit_values()
+            value._propagate_implicit_values()
             return value
 
         def remove_child(self, name):

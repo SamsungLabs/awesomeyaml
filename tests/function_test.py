@@ -16,7 +16,7 @@ import copy
 import pickle
 import unittest
 
-from .utils import setUpModule
+from .utils import setUpModule, dummy
 
 
 def test_f(a, b):
@@ -45,6 +45,21 @@ class FunctionNodeTest(unittest.TestCase):
         self.assertIsInstance(test2, FunctionNode)
         self.assertEqual(test._func(**test), 11)
         self.assertEqual(test2._func(**test2), 11)
+        self.assertEqual(test.ayns.node_info, test2.ayns.node_info)
+
+    def test_deepcopy2(self):
+        from awesomeyaml.nodes.function import FunctionNode
+        test = FunctionNode(dummy, args={ 'a': 3, 'b': { 'foo': 2, 'bar': 3 }})
+        test2 = copy.deepcopy(test)
+        self.assertEqual(test, test2)
+        self.assertIsNot(test, test2)
+        self.assertIsNot(test.a, test2.a)
+        self.assertIsInstance(test2, FunctionNode)
+        self.assertEqual(test._func(**test), (tuple(), { 'a': 3, 'b': { 'foo': 2, 'bar': 3 }}))
+        self.assertEqual(test2._func(**test2), (tuple(), { 'a': 3, 'b': { 'foo': 2, 'bar': 3 }}))
+        self.assertEqual(test.ayns.node_info, test2.ayns.node_info)
+        self.assertEqual(test.b.ayns.node_info, test2.b.ayns.node_info)
+        self.assertEqual(test.b.foo.ayns.node_info, test2.b.foo.ayns.node_info)
 
     def test_pickle(self):
         from awesomeyaml.nodes.function import FunctionNode

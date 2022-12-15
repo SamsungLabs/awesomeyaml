@@ -14,7 +14,7 @@
 
 from .nodes.node import ConfigNode
 from .nodes.composed import ComposedNode, NodePath
-from .namespace import Namespace, NamespaceableMeta, namespace
+from .namespace import NamespaceableMeta
 from .utils import Bunch
 
 import copy
