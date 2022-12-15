@@ -23,6 +23,19 @@ Builder = builder.Builder
 EvalContext = eval_context.EvalContext
 
 
+def set_default_eval_symbols(symbols):
+    return EvalContext.set_default_eval_symbols(symbols)
+
+def get_default_eval_symbols():
+    return EvalContext.get_default_eval_symbols()
+
+def set_default_safe_flag(flag):
+    return Builder.set_default_safe_flag(flag)
+
+def get_default_safe_flag():
+    return Builder.get_default_safe_flag()
+
+
 from .utils import add_module_properties
 from .namespace import staticproperty
 

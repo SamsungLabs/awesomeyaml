@@ -36,6 +36,9 @@ class Builder():
         After all relevant stages have been added, they can be later merged into a single
         node by calling :py:meth:`build`.
     '''
+
+    _default_safe_flag = True
+
     def __init__(self):
         ''' Creates an empty builder. Yaml documents can then be added with calls to :py:meth:`add_source`
             and :py:meth:`add_multiple_sources`.
@@ -90,8 +93,8 @@ class Builder():
         '''
         return self._current_file
 
-    def add_multiple_sources(self, *sources, raw_yaml=None, filename=None):
-        ''' Adds multiple sources using :py:meth:`add_source` function. ``raw_yaml`` and ``filename`` have the same meaning
+    def add_multiple_sources(self, *sources, raw_yaml=None, filename=None, safe=None):
+        ''' Adds multiple sources using :py:meth:`add_source` function. ``raw_yaml``, ``filename`` and ``safe`` have the same meaning
             as in :py:meth:`add_source` and can be either a single scalar, in which case its value is broadcasted
             and applied to all elements in ``*sources``, or they can be sequences of equal length if different
             values should be applied to different elements in ``*sources``. It's perfectly fine for one of them
@@ -113,10 +116,11 @@ class Builder():
 
         raw_yaml = sanitize(raw_yaml, 'raw_yaml')
         filename = sanitize(filename, 'filename')
-        for source, raw, fname in zip(sources, raw_yaml, filename):
-            self.add_source(source, raw_yaml=raw, filename=fname)
+        safe = sanitize(safe, 'safe')
+        for source, raw, fname, sflag in zip(sources, raw_yaml, filename, safe):
+            self.add_source(source, raw_yaml=raw, filename=fname, safe=sflag)
 
-    def add_source(self, source, raw_yaml=None, filename=None):
+    def add_source(self, source, raw_yaml=None, filename=None, safe=None):
         ''' Parse a stream of yaml documents specified by ``source`` and add them to the list of stages.
             The documents stream can be provided either directly or read from a file - the behaviour is determined
             by ``source`` and ``raw_yaml`` arguments.
@@ -132,6 +136,22 @@ class Builder():
                             - if ``bool(raw_yaml)`` evaluates to ``False`` and is not ``None``, the function will attempt to open and read content of a file named ``source``,
                               raising an error if such a file does not exist
                             - if ``bool(raw_yaml)`` evaluates to ``True``, ``source`` is treated as a yaml string and passed directly to the :py:func:`awesomeyaml.yaml.parse`
+
+                filename : can be used to provide a custom filename that should be associated with the parsed ``source``, useful if ``source`` does not name a file
+                            by itself, if not passed (``None``) and ``source`` names a file, the associated filename will be the one passed by ``source```, if ``source``
+                            does not name a file and ``filename`` is not specified, parsed content will not have information about the source filename
+
+                safe : specifies whether the parsed content should be considered safe for evaluation, some nodes parsed as unsafe will fail to evaluate for security
+                        reasons (e.g., eval nodes); marking something as unsafe is contentious, while code marked as safe can still declare parts of itself as unsafe
+                        from within the yaml (by using !unsafe or equivalent metadata); the exact rules for deducing safety of a node are summarized below::
+
+                            - if a node is explicitly marked as !unsafe within yaml, it is unsafe
+                            - otherwise, if it's a child of an unsafe node, it is unsafe
+                            - otherwise, if it's included by a part of the code considered unsafe, it is unsafe
+                            - for some node types, if a node is merged with an unsafe node, it might become unsafe itself
+                            - otherwise, if a node comes from a source added with ``safe`` parameter set to ``False``, it is unsafe
+                            - otherwise, if a node was parsed while the default safe flag (``Builder.set_default_safe_flag``) was set to ``False``, it is unsafe
+                            - otherwise, it is safe
 
             Returns:
                 ``None``
@@ -159,11 +179,15 @@ class Builder():
             if filename is not None:
                 self._current_file = filename
 
-            with ConfigNode.default_filename(self._current_file):
-                from . import yaml
-                for node in yaml.parse(source, self):
-                    if node is not None:
-                        self.stages.append(node)
+            if safe is None:
+                safe = self._default_safe_flag
+
+            with ConfigNode.default_safe_flag(safe and self._default_safe_flag):
+                with ConfigNode.default_filename(self._current_file):
+                    from . import yaml
+                    for node in yaml.parse(source, self):
+                        if node is not None:
+                            self.stages.append(node)
         finally:
             self._current_file = None
 

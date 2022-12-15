@@ -17,6 +17,7 @@ import collections.abc as cabc
 
 from .node import ConfigNode
 from ..namespace import Namespace, staticproperty
+from ..utils import notnone_or
 
 
 class NodePath(list):
@@ -132,20 +133,22 @@ class ComposedNode(ConfigNode):
             raise ValueError(f'Unexpected type: {type(path)}, expected int, sequence or str')
         return path
 
-    def _get_child_kwargs(self):
+    def _get_child_kwargs(self, child=None):
         ret = {}
         if not hasattr(self, '_delete'): # happens when unpickling! children are being populated before attributes are set, but its ok since we assume pickled objects are ok anyway, so no need to fix things
             return ret
-        ret['implicit_delete'] = (self._delete if self._delete is not None else self._implicit_delete)
-        ret['implicit_allow_new'] = (self._allow_new if self._allow_new is not None else self._implicit_allow_new)
+        ret['implicit_delete'] = notnone_or(self._delete, self._implicit_delete)
+        ret['implicit_allow_new'] = notnone_or(self._allow_new, self._implicit_allow_new)
+        if child is None or getattr(child, '_implicit_safe') is not False: # do not set "implicit_safe" arg if the child exists and already has it set to False (note: I think it's not strictly necessary to handle it here since other checks would still prevent changes)
+            ret['implicit_safe'] = notnone_or(self._safe, self._implicit_safe)
         return ret
 
     def _propagate_implicit_values(self):
         if not hasattr(self, '_delete'): # happens when unpickling! children are being populated before attributes are set, but its ok since we assume pickled objects are ok anyway, so no need to fix things
             return
-        if self._implicit_delete is None and self._implicit_allow_new is None:
+        if self._implicit_delete is None and self._implicit_allow_new is None and self._implicit_safe is None:
             return
-        if self._delete is not None and self._allow_new is not None:
+        if self._delete is not None and self._allow_new is not None and self._safe is not None:
             return
 
         for child in self._children.values():
@@ -158,6 +161,11 @@ class ComposedNode(ConfigNode):
                 if child._implicit_allow_new != self._implicit_allow_new:
                     child._implicit_allow_new = self._implicit_allow_new
                     fix = True
+            if self._safe is None:
+                if child._implicit_safe != self._implicit_safe:
+                    if child._implicit_safe is not False:
+                        child._implicit_safe = self._implicit_safe
+                        fix = True
 
             if fix:
                 child._propagate_implicit_values()
@@ -168,6 +176,7 @@ class ComposedNode(ConfigNode):
         kwargs.pop('metadata', None)
         kwargs.pop('delete', None)
         kwargs.pop('allow_new', None)
+        kwargs.pop('safe', None)
         kwargs.update(self._get_child_kwargs())
         nodes_memo = nodes_memo if nodes_memo is not None else {}
         self._children = { name: ConfigNode(child, **kwargs, nodes_memo=nodes_memo) for name, child in children.items() } # pylint: disable=unexpected-keyword-arg

@@ -276,3 +276,9 @@ def python_is_at_least(major, minor):
 
 def python_is_exactly(major, minor):
     return sys.version_info[0] == major and sys.version_info[1] == minor
+
+
+def notnone_or(value, alt):
+    if value is None:
+        return alt
+    return value

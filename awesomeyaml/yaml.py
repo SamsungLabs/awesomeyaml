@@ -363,6 +363,11 @@ def _notnew_constructor(loader, node):
 
 
 @rethrow_as_parsing_error_impl
+def _unsafe_constructor(loader, node):
+    return _make_node(loader, node, kwargs={ 'safe': False })
+
+
+@rethrow_as_parsing_error_impl
 def make_call_node_with_fixed_func(loader, node, func):
     from .nodes.call import CallNode
     return _make_node(loader, node, node_type=CallNode, kwargs={ 'func': func }, data_arg_name='args')
@@ -397,6 +402,7 @@ yaml.add_multi_constructor('!path:', _path_constructor)
 yaml.add_constructor('!path', _simple_path_constructor)
 yaml.add_constructor('!new', _new_constructor)
 yaml.add_constructor('!notnew', _notnew_constructor)
+yaml.add_constructor('!unsafe', _unsafe_constructor)
 
 
 def _node_representer(dumper, node):

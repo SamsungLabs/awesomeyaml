@@ -18,13 +18,14 @@ import contextlib
 import collections.abc as cabc
 
 from ..namespace import NamespaceableMeta, Namespace, staticproperty
-from ..utils import persistent_id
+from ..utils import persistent_id, notnone_or
 
 
 _kwargs_to_inherit = [
     'priority',
     'implicit_delete',
     'implicit_allow_new',
+    'implicit_safe',
     'pyyaml_node'
 ]
 
@@ -50,8 +51,12 @@ class ConfigNodeMeta(NamespaceableMeta):
             if isinstance(value, ConfigNode):
                 for arg_name in _kwargs_to_inherit:
                     if arg_name in kwargs:
+                        # do not change implicit_safe if already set to False
+                        if arg_name == 'implicit_safe' and getattr(value, '_' + arg_name) is False:
+                            del kwargs[arg_name]
+                            continue
                         setattr(value, '_' + arg_name, kwargs[arg_name])
-                if 'implicit_delete' in kwargs or 'implicit_allow_new' in kwargs:
+                if any(k.startswith('implicit_') for k in kwargs.keys()):
                     value._propagate_implicit_values()
 
                 return value
@@ -107,11 +112,11 @@ class ConfigNode(metaclass=ConfigNodeMeta):
         'delete',
         'allow_new',
         'source_file',
-        'dependencies',
-        'users'
+        'safe'
     ]
 
     _default_filename = threading.local()
+    _default_safe = threading.local()
     _default_priority = STANDARD
     _default_delete = False
     _default_allow_new = True
@@ -129,7 +134,21 @@ class ConfigNode(metaclass=ConfigNodeMeta):
         finally:
             ConfigNode._default_filename.value = old
 
-    def __init__(self, idx=None, priority=None, delete=None, allow_new=None, metadata=None, source_file=None, implicit_delete=None, implicit_allow_new=None, pyyaml_node=None):
+    @staticmethod
+    @contextlib.contextmanager
+    def default_safe_flag(value):
+        if not hasattr(ConfigNode._default_safe, 'value'):
+            ConfigNode._default_safe.value = False
+
+        old = ConfigNode._default_safe.value
+        ConfigNode._default_safe.value = value and old
+        try:
+            yield
+        finally:
+            ConfigNode._default_safe.value = old
+
+
+    def __init__(self, idx=None, priority=None, delete=None, allow_new=None, safe=None, metadata=None, source_file=None, implicit_delete=None, implicit_allow_new=None, implicit_safe=None, pyyaml_node=None):
         ''' '''
 
         """ There's a lit bit going on with merging flags here, basically the main idea is that we have 3 sources of flags, they are (in the precedence order):
@@ -148,6 +167,9 @@ class ConfigNode(metaclass=ConfigNodeMeta):
         self._source_file = source_file if source_file is not None else getattr(ConfigNode._default_filename, 'value', None)
         self._metadata = metadata or {}
         self._pyyaml_node = pyyaml_node
+        self._safe = safe
+        self._implicit_safe = implicit_safe
+        self._default_safe = getattr(ConfigNode._default_safe, 'value', False)
 
     def __repr__(self, simple=False):
         return f'<Object {type(self).__name__!r} at 0x{id(self):02x}>'
@@ -183,12 +205,9 @@ class ConfigNode(metaclass=ConfigNodeMeta):
 
         @property
         def allow_new(self):
-            # if self._allow_new is None:
             if self._implicit_allow_new is not None:
                 return self._implicit_allow_new
             return self._default_allow_new
-
-            # return self._allow_new
 
         @property
         def explicit_delete(self):
@@ -203,6 +222,10 @@ class ConfigNode(metaclass=ConfigNodeMeta):
         @property
         def metadata(self):
             return self._metadata
+
+        @property
+        def safe(self):
+            return notnone_or(self._safe, True) and notnone_or(self._implicit_safe, True) and notnone_or(self._default_safe, False)
 
         @staticproperty
         @staticmethod
@@ -318,4 +341,7 @@ class ConfigNode(metaclass=ConfigNodeMeta):
                 raise ValueError(f'Node {path!r} (source file: {self._source_file!r}) requires that the destination already exists but the current config tree does not contain a node under this path ({reason})')
 
     def _propagate_implicit_values(self):
+        return
+
+    def _propagate_safe(self):
         return
