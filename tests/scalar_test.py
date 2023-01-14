@@ -70,5 +70,46 @@ class ScalarNodeStrTest(unittest.TestCase):
         self.assertTrue(issubclass(ConfigScalar(str), ConfigScalar))
 
 
+class ScalarNodeNoneTest(unittest.TestCase):
+    def test_none(self):
+        from awesomeyaml.nodes.scalar import ConfigScalar
+        i = ConfigScalar(None)
+        self.assertEqual(str(i), str(None))
+        self.assertIsNot(i, None)
+
+    def test_eq(self):
+        from awesomeyaml.nodes.scalar import ConfigScalar
+        i = ConfigScalar(None)
+        self.assertEqual(i, None)
+        self.assertEqual(None, i)
+        self.assertEqual(i, ConfigScalar(None))
+
+    def test_types(self):
+        from awesomeyaml.nodes.scalar import ConfigScalar, ConfigNone
+        i = ConfigScalar(None)
+        self.assertIsInstance(i, ConfigNone)
+        self.assertIsInstance(i, ConfigScalar)
+        self.assertIsInstance(i, ConfigScalar(type(None)))
+        self.assertIsInstance(i, ConfigScalar(ConfigNone))
+        self.assertIs(type(i), ConfigScalar(ConfigNone))
+        self.assertTrue(issubclass(ConfigScalar(ConfigNone), ConfigScalar))
+
+    def test_dump(self):
+        from awesomeyaml import yaml as y
+        src = '!null'
+        parsed = next(y.parse(src))
+        dst = y.dump(parsed).strip()
+        if dst.endswith('\n...'):
+            dst = dst[:-4].strip()
+        self.assertEqual(dst, src)
+
+    def test_dump_lightweight(self): # the test skips a lot of stuff by using pyyaml directly (rather than via awesomeyaml's wrappers)
+        from awesomeyaml import yaml as y
+        parsed = None
+        dst = y.yaml.dump(parsed, Dumper=y.AwesomeyamlDumper).strip()
+        if dst.endswith('\n...'):
+            dst = dst[:-4].strip()
+        self.assertEqual(dst, '!null')
+
 if __name__ == '__main__':
     unittest.main()

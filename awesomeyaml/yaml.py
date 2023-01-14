@@ -405,6 +405,12 @@ yaml.add_constructor('!notnew', _notnew_constructor)
 yaml.add_constructor('!unsafe', _unsafe_constructor)
 
 
+def _dump_none(dumper):
+    node = dumper.represent_scalar('!null', '', style='')
+    node.__class__ = NullNode
+    return node
+
+
 def _node_representer(dumper, node):
     from .nodes.bind import BindNode
     tag, metadata, data = node.ayns.represent()
@@ -499,7 +505,7 @@ def _node_representer(dumper, node):
             if tag:
                 if data is None:
                     assert tag.startswith('!null')
-                    return dumper.represent_scalar(tag, str(''))
+                    return _dump_none(dumper)
                 return dumper.represent_scalar(tag, str(data))
             else:
                 from .nodes.scalar import ConfigScalar
@@ -514,7 +520,7 @@ def _node_representer(dumper, node):
 
 
 def _none_representer(dumper, none):
-    return dumper.dump_scalar('!null', str(''))
+    return _dump_none(dumper)
 
 
 yaml.add_multi_representer(ConfigNode, _node_representer)
@@ -643,7 +649,7 @@ def dump(nodes, output=None, open_mode='w', exclude_metadata=None, sort_keys=Fal
         close = True
 
     def get_dumper(*args, **kwargs):
-        dumper = yaml.Dumper(*args, **kwargs)
+        dumper = AwesomeyamlDumper(*args, **kwargs)
         assert not hasattr(dumper, 'metadata')
         dumper.metadata = []
         dumper.exclude_metadata = exclude_metadata or set()

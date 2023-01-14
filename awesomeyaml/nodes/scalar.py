@@ -151,6 +151,9 @@ class ConfigScalar(ConfigScalarMarker, metaclass=ConfigScalarMeta):
         if self._dyn_base is str:
             return str.__str__(self)
 
+        if self._dyn_base is ConfigNone:
+            return ConfigNone.__str__(self)
+
         return str(self._dyn_base(self)) # pylint: disable=no-member
 
     def _get_value(self):
