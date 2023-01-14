@@ -373,6 +373,19 @@ def make_call_node_with_fixed_func(loader, node, func):
     return _make_node(loader, node, node_type=CallNode, kwargs={ 'func': func }, data_arg_name='args')
 
 
+@rethrow_as_parsing_error_impl
+def _clear_constructor(loader, node):
+    from .nodes.clear import ClearNode
+    return _make_node(loader, node, node_type=ClearNode)
+
+
+@rethrow_as_parsing_error_impl
+def _clear_constructor_md(loader, tag_suffix, node):
+    from .nodes.clear import ClearNode
+    kwargs = _decode_metadata(tag_suffix)
+    return _make_node(loader, node, kwargs=kwargs, node_type=ClearNode)
+
+
 yaml.add_constructor('!del', _del_constructor)
 yaml.add_constructor('!weak', _weak_constructor)
 yaml.add_constructor('!force', _force_constructor)
@@ -403,6 +416,8 @@ yaml.add_constructor('!path', _simple_path_constructor)
 yaml.add_constructor('!new', _new_constructor)
 yaml.add_constructor('!notnew', _notnew_constructor)
 yaml.add_constructor('!unsafe', _unsafe_constructor)
+yaml.add_constructor('!clear', _clear_constructor)
+yaml.add_multi_constructor('!clear:', _clear_constructor_md)
 
 
 def _dump_none(dumper):
