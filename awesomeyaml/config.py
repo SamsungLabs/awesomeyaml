@@ -68,7 +68,7 @@ class Config(Bunch, metaclass=NamespaceableMeta):
 
         def append(idx, option):
             option = option.strip()
-            if option.startswith('{') and option.endswith('}'):
+            if (option.startswith('{') and option.endswith('}')) or (('\n' in option or ':' in option) and '=' not in option):
                 yaml = option
                 filename = f'<Commandline argument #{idx}>'
                 raw_yaml = True
