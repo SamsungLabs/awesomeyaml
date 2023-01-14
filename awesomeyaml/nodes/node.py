@@ -211,8 +211,6 @@ class ConfigNode(metaclass=ConfigNodeMeta):
 
         @property
         def explicit_delete(self):
-            if self._delete is None:
-                return self._default_delete
             return self._delete
 
         @property

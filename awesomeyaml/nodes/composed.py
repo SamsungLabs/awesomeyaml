@@ -137,7 +137,7 @@ class ComposedNode(ConfigNode):
         ret = {}
         if not hasattr(self, '_delete'): # happens when unpickling! children are being populated before attributes are set, but its ok since we assume pickled objects are ok anyway, so no need to fix things
             return ret
-        ret['implicit_delete'] = notnone_or(self._delete, self._implicit_delete)
+        ret['implicit_delete'] = notnone_or(self._delete, self._default_delete or self._implicit_delete)
         ret['implicit_allow_new'] = notnone_or(self._allow_new, self._implicit_allow_new)
         if child is None or getattr(child, '_implicit_safe') is not False: # do not set "implicit_safe" arg if the child exists and already has it set to False (note: I think it's not strictly necessary to handle it here since other checks would still prevent changes)
             ret['implicit_safe'] = notnone_or(self._safe, self._implicit_safe)
@@ -439,7 +439,6 @@ class ComposedNode(ConfigNode):
                     other_node = other.ayns.get_first_not_missing_node(path)
                     return node.ayns.has_priority_over(other_node)
 
-
                 self.ayns.filter_nodes(maybe_keep, prefix=prefix, removed=removed)
                 if not self._children and other.ayns.has_priority_over(self, if_equal=True):
                     removed.add(prefix)
@@ -464,7 +463,7 @@ class ComposedNode(ConfigNode):
                         pass
 
                     if merge:
-                        if not possibly_new_child and not possibly_new_child.ayns.has_priority_over(value):
+                        if not possibly_new_child and not possibly_new_child.ayns.has_priority_over(value) and value.ayns.explicit_delete:
                             self.ayns.remove_child(key)
                         elif possibly_new_child is not child:
                             self.ayns.set_child(key, possibly_new_child)

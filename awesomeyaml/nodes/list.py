@@ -23,7 +23,6 @@ class ConfigList(ComposedNode, list):
 
     def __init__(self, value=None, **kwargs):
         value = value if value is not None else []
-        kwargs.setdefault('delete', True)
         ComposedNode.__init__(self, children={ i: v for i, v in enumerate(value) }, **kwargs)
         list.__init__(self, self._children.values())
 

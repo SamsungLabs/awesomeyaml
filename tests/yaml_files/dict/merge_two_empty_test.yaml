@@ -1,0 +1,8 @@
+---
+foo: {}
+---
+foo: {}
+
+
+###EXPECTED
+foo: {}
