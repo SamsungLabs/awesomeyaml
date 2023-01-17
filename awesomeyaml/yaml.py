@@ -32,6 +32,10 @@ _fstr_regex = re.compile(r"^\s*f(['\"]).*\1\s*$")
 _global_ctx = None
 
 
+class NullNode(yaml.ScalarNode):
+    pass
+
+
 class AwesomeyamlLoader(yaml.Loader):
     def _convert(self, value, node):
         if value is None and node.value == '':
@@ -59,6 +63,33 @@ class AwesomeyamlLoader(yaml.Loader):
                 self.state_generators.append(self._make_generator(value, aynode.update))
 
         return aynode
+
+
+class AwesomeyamlDumper(yaml.Dumper):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.is_null_node = False
+
+    def serialize_node(self, node, parent, index):
+        if isinstance(node, NullNode):
+            self.is_null_node = True
+
+        try:
+            ret = super().serialize_node(node, parent, index)
+        finally:
+            self.is_null_node = False
+
+        return ret
+
+    def emit(self, event):
+        event.is_null_node = self.is_null_node
+        return super().emit(event)
+
+    def choose_scalar_style(self):
+        if self.event.is_null_node:
+            return ''
+
+        return super().choose_scalar_style()
 
 
 def rethrow_as_parsing_error_impl(func):
@@ -89,7 +120,6 @@ def global_ctx(filename):
     with ConfigNode.default_filename(filename):
         yield _global_ctx
     _global_ctx._current_file = None
-
 
 
 def _encode_metadata(metadata):
