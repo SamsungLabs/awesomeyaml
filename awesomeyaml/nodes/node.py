@@ -379,7 +379,8 @@ class ConfigNode(metaclass=ConfigNodeMeta):
             return {
                 'priority': self._default_priority,
                 'delete': self._default_delete,
-                'allow_new': self._default_allow_new
+                'allow_new': self._default_allow_new,
+                'safe': self._default_safe
             }
 
         def represent(self):

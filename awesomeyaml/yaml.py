@@ -32,7 +32,7 @@ _fstr_regex = re.compile(r"^\s*f(['\"]).*\1\s*$")
 _global_ctx = None
 
 
-class NullNode(yaml.ScalarNode):
+class UnquotedNode(yaml.ScalarNode):
     pass
 
 
@@ -68,28 +68,49 @@ class AwesomeyamlLoader(yaml.Loader):
 class AwesomeyamlDumper(yaml.Dumper):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.is_null_node = False
+        self._unquoted = False
+
+    @contextlib.contextmanager
+    def force_unquoted(self, value=True):
+        old, self._unquoted = self._unquoted, value
+        try:
+            yield
+        finally:
+            self._unquoted = old
+
+    def represent_scalar(self, tag, value, style=None):
+        ret = super().represent_scalar(tag, value, style)
+        if self._unquoted:
+            ret.__class__ = UnquotedNode
+        return ret
 
     def serialize_node(self, node, parent, index):
-        if isinstance(node, NullNode):
-            self.is_null_node = True
+        old = None
+        if isinstance(node, UnquotedNode):
+            old, self._unquoted = self._unquoted, True
 
         try:
             ret = super().serialize_node(node, parent, index)
         finally:
-            self.is_null_node = False
+            if old is not None:
+                self._unquoted = old
 
         return ret
 
     def emit(self, event):
-        event.is_null_node = self.is_null_node
+        event._unquoted = self._unquoted
         return super().emit(event)
 
     def choose_scalar_style(self):
-        if self.event.is_null_node:
+        if self.event._unquoted:
             return ''
 
         return super().choose_scalar_style()
+
+    def write_plain(self, text, *args, **kwargs):
+        super().write_plain(text, *args, **kwargs)
+        if self.event._unquoted and not text:
+            self.stream.write(' ')
 
 
 def rethrow_as_parsing_error(func):
@@ -442,12 +463,6 @@ yaml.add_constructor('!clear', _clear_constructor)
 yaml.add_multi_constructor('!clear:', _clear_constructor_md)
 
 
-def _dump_none(dumper):
-    node = dumper.represent_scalar('!null', '', style='')
-    node.__class__ = NullNode
-    return node
-
-
 def _node_representer(dumper, node):
     from .nodes.bind import BindNode
     tag, metadata, data = node.ayns.represent()
@@ -471,6 +486,10 @@ def _node_representer(dumper, node):
         'allow_new': {
             True: '!new',
             False: '!notnew'
+        },
+        'safe': {
+            True: '!safe',
+            False: '!unsafe'
         }
     }
 
@@ -539,13 +558,17 @@ def _node_representer(dumper, node):
                     data = tuple(data)
                 return dumper.represent_data(data)
         else:
+            from .nodes.scalar import ConfigScalar
             if tag:
                 if data is None:
                     assert tag.startswith('!null')
-                    return _dump_none(dumper)
-                return dumper.represent_scalar(tag, str(data))
+                    with dumper.force_unquoted():
+                        return dumper.represent_scalar('!null', '', style='')
+                with dumper.force_unquoted():
+                    if isinstance(data, ConfigScalar):
+                        return dumper.represent_scalar(tag, repr(data._dyn_base(data)))
+                    return dumper.represent_scalar(tag, str(data))
             else:
-                from .nodes.scalar import ConfigScalar
                 if isinstance(data, ConfigScalar):
                     return dumper.represent_data(data._dyn_base(data))
                 else:
@@ -557,7 +580,8 @@ def _node_representer(dumper, node):
 
 
 def _none_representer(dumper, none):
-    return _dump_none(dumper)
+    with dumper.force_unquoted():
+        return dumper.represent_scalar('!null', '', style='')
 
 
 yaml.add_multi_representer(ConfigNode, _node_representer)
