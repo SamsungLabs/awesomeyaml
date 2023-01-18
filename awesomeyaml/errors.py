@@ -91,7 +91,10 @@ class Error(yaml.error.MarkedYAMLError):
 
         if self.extra_node is None:
             if self.stage == 'parsing':
-                mark = self.node.start_mark
+                if self.node is not None:
+                    mark = self.node.start_mark
+                else:
+                    mark = None
             else:
                 mark = _get_mark_or_fallback_str(self.node)
 
