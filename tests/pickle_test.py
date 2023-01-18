@@ -119,7 +119,7 @@ class PickleTest(unittest.TestCase):
 
     def test_path(self):
         from awesomeyaml.nodes.path import PathNode
-        test = PathNode(['foo', 'bar'], ref_point='file', src_filename='dar/car.yaml')
+        test = PathNode(['foo', 'bar'], ref_point='file', source_file='dar/car.yaml')
         self.check_pickle(test)
 
     def test_prev(self):

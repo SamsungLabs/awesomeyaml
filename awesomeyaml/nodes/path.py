@@ -76,7 +76,7 @@ class PathNode(ConfigList):
             The same as for list nodes.
 
     '''
-    def __init__(self, values, ref_point, src_filename, **kwargs):
+    def __init__(self, values, ref_point, **kwargs):
         if not isinstance(values, Sequence) or isinstance(values, str) or isinstance(values, bytes):
             if not values:
                 values = []
@@ -86,7 +86,6 @@ class PathNode(ConfigList):
         super().__init__(values, **kwargs)
 
         self.ref_point = ref_point or ''
-        self.src_filename = os.path.normpath(src_filename)
 
         self._ref_point_parsed = None
         if self.ref_point not in ['', 'cwd', 'file']:
@@ -115,9 +114,13 @@ class PathNode(ConfigList):
         elif ref_point == 'cwd':
             ret = pathlib.Path(os.getcwd()).joinpath(*args)
         elif ref_point == 'file':
-            ret = pathlib.Path(self.src_filename).joinpath(*args)
+            if self.ayns.source_file is None:
+                raise ValueError('!path node with :file reference requires to know source file of the node, but the node is missing this information')
+            ret = pathlib.Path(self.ayns.source_file).joinpath(*args)
         elif ref_point == 'parent':
-            src = pathlib.Path(self.src_filename)
+            if self.ayns.source_file is None:
+                raise ValueError('!path node with :parent reference requires to know source file of the node, but the node is missing this information')
+            src = pathlib.Path(self.ayns.source_file)
             if ref_point_args >= len(src.parents):
                 diff = ref_point_args - len(src.parents) + 1
                 ref_point_args = len(src.parents) - 1
@@ -143,8 +146,10 @@ class PathNode(ConfigList):
     @namespace('ayns')
     @property
     def value(self):
-        return {
+        base = {
             'values': list(super()._get_value()),
-            'ref_point': self.ref_point,
-            'src_filename': self.src_filename
+            'ref_point': self.ref_point
         }
+        if self.ayns.source_file is not None:
+            base['source_file'] = self.ayns.source_file
+        return base

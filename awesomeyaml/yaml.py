@@ -381,7 +381,7 @@ def _none_constructor_md(loader, tag_suffix, node):
 @rethrow_as_parsing_error
 def _simple_path_constructor(loader, node):
     from .nodes.path import PathNode
-    return _make_node(loader, node, node_type=PathNode, kwargs={ 'ref_point': None, 'src_filename': loader.context.get_current_file() })
+    return _make_node(loader, node, node_type=PathNode, kwargs={ 'ref_point': None })
 
 
 @rethrow_as_parsing_error
@@ -392,7 +392,7 @@ def _path_constructor(loader, tag_suffix, node):
 
     ref_point, metadata = pad_with_none(*tag_suffix.rsplit(':', maxsplit=1), minlen=2)
     kwargs = _decode_metadata(metadata)
-    return _make_node(loader, node, node_type=PathNode, kwargs={ 'ref_point': ref_point, 'src_filename': loader.context.get_current_file(), **kwargs }, dict_is_data=False)
+    return _make_node(loader, node, node_type=PathNode, kwargs={ 'ref_point': ref_point, **kwargs }, dict_is_data=False)
 
 
 @rethrow_as_parsing_error
