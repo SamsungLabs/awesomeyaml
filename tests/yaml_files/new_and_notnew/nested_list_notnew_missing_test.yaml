@@ -8,5 +8,5 @@ f: !notnew
 
 
 ###ERROR
-ValueError
-Node 'f.car\[2\]' .*
+MergeError
+.*Node 'f.car\[2\]' .*

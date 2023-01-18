@@ -20,6 +20,7 @@ from .eval_context import EvalContext
 from .namespace import namespace, NamespaceableMeta
 from .utils import Bunch
 from .nodes.required import RequiredNode
+from . import errors
 
 
 class Config(Bunch, metaclass=NamespaceableMeta):
@@ -48,6 +49,7 @@ class Config(Bunch, metaclass=NamespaceableMeta):
         super().__init__(evaluated)
 
     @classmethod
+    @errors.api_entry
     def build(cls, *sources, raw_yaml=None, filename=None):
         ''' Builds a config from the provided yaml sources and evaluates it, returning `awesomeyaml.Config` object.
 

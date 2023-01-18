@@ -99,7 +99,7 @@ class IncludeNode(ConfigNode):
         self.filenames = [os.path.expanduser(f) for f in filenames]
 
     @namespace('ayns')
-    def on_preprocess(self, path, builder):
+    def on_preprocess_impl(self, path, builder):
         subbuilder = builder.get_subbuilder(path)
         missing = []
         for filename in self.filenames:

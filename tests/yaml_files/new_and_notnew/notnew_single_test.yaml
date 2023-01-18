@@ -5,5 +5,5 @@ foo:
     car: 12
 
 ###ERROR
-ValueError
-Node 'foo' .*
+MergeError
+.*Node 'foo' .*

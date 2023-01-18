@@ -92,19 +92,11 @@ class AwesomeyamlDumper(yaml.Dumper):
         return super().choose_scalar_style()
 
 
-def rethrow_as_parsing_error_impl(func):
+def rethrow_as_parsing_error(func):
     def impl(*args, **kwargs):
-        node = (args[2] if isinstance(args[1], str) else args[1])
-        try:
+        node = args[2] if len(args) > 2 else args[1]
+        with errors.rethrow(errors.ParsingError, node, None, None):
             return func(*args, **kwargs)
-        except Exception as e:
-            if errors.rethrow:
-                if errors.include_original_exception:
-                    raise errors.ParsingError(str(e), node) from e
-                else:
-                    raise errors.ParsingError(str(e), node) from None
-            else:
-                raise
 
     return impl
 
@@ -215,69 +207,69 @@ def _make_node(loader, node, node_type=ConfigNode, kwargs=None, data_arg_name=No
         return node_type(idx=loader.context.get_next_stage_idx(), **kwargs)
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _del_constructor(loader, node):
     return _make_node(loader, node, kwargs={ 'delete': True })
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _weak_constructor(loader, node):
     return _make_node(loader, node, kwargs={ 'priority': ConfigNode.WEAK })
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _force_constructor(loader, node):
     return _make_node(loader, node, kwargs={ 'priority': ConfigNode.FORCE })
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _merge_constructor(loader, node):
     return _make_node(loader, node, kwargs={ 'delete': False })
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _append_constructor(loader, node):
     from .nodes.append import AppendNode
     return _make_node(loader, node, node_type=AppendNode)
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _metadata_constructor(loader, tag_suffix, node):
     kwargs = _decode_metadata(tag_suffix)
     return _make_node(loader, node, kwargs=kwargs)
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _include_constructor(loader, node):
     from .nodes.include import IncludeNode
     return _make_node(loader, node, node_type=IncludeNode, dict_is_data=False, parse_scalars=False)
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _prev_constructor(loader, node):
     from .nodes.prev import PrevNode
     return _make_node(loader, node, node_type=PrevNode, parse_scalars=False)
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _xref_constructor(loader, node):
     from .nodes.xref import XRefNode
     return _make_node(loader, node, node_type=XRefNode, parse_scalars=False)
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _xref_constructor_md(loader, tag_suffix, node):
     from .nodes.xref import XRefNode
     kwargs = _decode_metadata(tag_suffix)
     return _make_node(loader, node, kwargs=kwargs, node_type=XRefNode, parse_scalars=False)
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _simple_bind_constructor(loader, node):
     from .nodes.bind import BindNode
     return _make_node(loader, node, node_type=BindNode, data_arg_name='func')
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _bind_constructor(loader, tag_suffix, node):
     from .nodes.bind import BindNode
     if tag_suffix.count(':') > 1:
@@ -288,13 +280,13 @@ def _bind_constructor(loader, tag_suffix, node):
     return _make_node(loader, node, node_type=BindNode, kwargs={ 'func': target_f_name, **kwargs }, data_arg_name='args')
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _simple_call_constructor(loader, node):
     from .nodes.call import CallNode
     return _make_node(loader, node, node_type=CallNode, data_arg_name='func')
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _call_constructor(loader, tag_suffix, node):
     from .nodes.call import CallNode
     if tag_suffix.count(':') > 1:
@@ -305,20 +297,20 @@ def _call_constructor(loader, tag_suffix, node):
     return _make_node(loader, node, node_type=CallNode, kwargs={ 'func': target_f_name, **kwargs }, data_arg_name='args')
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _eval_constructor(loader, tag_suffix, node):
     from .nodes.eval import EvalNode
     kwargs = _decode_metadata(tag_suffix)
     return _make_node(loader, node, node_type=EvalNode, kwargs=kwargs, parse_scalars=False)
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _simple_eval_constructor(loader, node):
     from .nodes.eval import EvalNode
     return _make_node(loader, node, node_type=EvalNode, parse_scalars=False)
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _fstr_constructor(loader, node):
     from .nodes.fstr import FStrNode
 
@@ -331,7 +323,7 @@ def _fstr_constructor(loader, node):
     return _make_node(loader, node, node_type=_maybe_fix_fstr, parse_scalars=False)
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _import_constructor(loader, node):
     import importlib
     module = importlib.import_module('.nodes.import', package='awesomeyaml') # dirty hack because "import" is a keyword
@@ -339,39 +331,39 @@ def _import_constructor(loader, node):
     return _make_node(loader, node, node_type=ImportNode, parse_scalars=False)
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _required_constructor(loader, node):
     from .nodes.required import RequiredNode
     return _make_node(loader, node, node_type=RequiredNode)
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _required_constructor_md(loader, tag_suffix, node):
     from .nodes.required import RequiredNode
     kwargs = _decode_metadata(tag_suffix)
     return _make_node(loader, node, kwargs=kwargs, node_type=RequiredNode)
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _none_constructor(loader, node):
     from .nodes.scalar import ConfigScalar
     return _make_node(loader, node, node_type=ConfigScalar(type(None)))
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _none_constructor_md(loader, tag_suffix, node):
     from .nodes.scalar import ConfigScalar
     kwargs = _decode_metadata(tag_suffix)
     return _make_node(loader, node, kwargs=kwargs, node_type=ConfigScalar(type(None)))
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _simple_path_constructor(loader, node):
     from .nodes.path import PathNode
     return _make_node(loader, node, node_type=PathNode, kwargs={ 'ref_point': None, 'src_filename': loader.context.get_current_file() })
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _path_constructor(loader, tag_suffix, node):
     from .nodes.path import PathNode
     if tag_suffix.count(':') > 1:
@@ -382,34 +374,34 @@ def _path_constructor(loader, tag_suffix, node):
     return _make_node(loader, node, node_type=PathNode, kwargs={ 'ref_point': ref_point, 'src_filename': loader.context.get_current_file(), **kwargs }, dict_is_data=False)
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _new_constructor(loader, node):
     return _make_node(loader, node, kwargs={ 'allow_new': True })
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _notnew_constructor(loader, node):
     return _make_node(loader, node, kwargs={ 'allow_new': False })
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _unsafe_constructor(loader, node):
     return _make_node(loader, node, kwargs={ 'safe': False })
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def make_call_node_with_fixed_func(loader, node, func):
     from .nodes.call import CallNode
     return _make_node(loader, node, node_type=CallNode, kwargs={ 'func': func }, data_arg_name='args')
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _clear_constructor(loader, node):
     from .nodes.clear import ClearNode
     return _make_node(loader, node, node_type=ClearNode)
 
 
-@rethrow_as_parsing_error_impl
+@rethrow_as_parsing_error
 def _clear_constructor_md(loader, tag_suffix, node):
     from .nodes.clear import ClearNode
     kwargs = _decode_metadata(tag_suffix)
@@ -632,6 +624,7 @@ def _encode_all_metadata(data):
     return data
 
 
+@errors.api_entry
 def parse(data, filename_or_builder=None, config_nodes=True):
     if not isinstance(data, str):
         data = data.read()
@@ -666,27 +659,19 @@ def parse(data, filename_or_builder=None, config_nodes=True):
                     yield node
                 else:
                     yield node.ayns.native_value
-        except errors.ParsingError as pe:
-            if errors.shorten_traceback:
-                if errors.include_original_exception:
-                    orig_exp = pe.__context__
-                    if orig_exp is not None:
-                        orig_exp.__traceback__ = orig_exp.__traceback__.tb_next # skip "rethrow_as_parsing_error_impl"
-                    raise errors.ParsingError(pe.error_msg, pe.node) from orig_exp
-                else:
-                    raise errors.ParsingError(pe.error_msg, pe.node) from None
-            else:
-                raise
+        except errors.ParsingError:
+            raise
         except Exception as e:
             if errors.rethrow:
                 if errors.include_original_exception:
-                    raise errors.ParsingError(str(e), None) from e
+                    raise errors.ParsingError(str(e), node=None, path=None) from e
                 else:
-                    raise errors.ParsingError(str(e), node=None) from None
+                    raise errors.ParsingError(str(e), node=None, path=None) from None
             else:
                 raise
 
 
+@errors.api_entry
 def dump(nodes, output=None, open_mode='w', exclude_metadata=None, sort_keys=False, **kwargs):
     close = False
     if isinstance(output, str):

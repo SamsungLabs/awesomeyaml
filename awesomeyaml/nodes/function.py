@@ -48,14 +48,14 @@ class FunctionNode(ConfigDict):
         return bool(self._func)
 
     @namespace('ayns')
-    def nested_merge(self, other, prefix):
+    def on_merge_impl(self, prefix, other):
         if isinstance(other, str):
             self._func = other
             self.clear()
             return self
 
         if isinstance(other, FunctionNode) and type(self) != type(other):
-            raise TypeError('Conflicting FunctionNode subclasses')
+            raise TypeError(f'Conflicting FunctionNode subclasses: {type(self)} and {type(other)}')
 
         try:
             if self._func != other._func:
@@ -64,10 +64,10 @@ class FunctionNode(ConfigDict):
         except AttributeError:
             pass
 
-        return super().ayns.nested_merge(other, prefix)
+        return super().ayns.on_merge_impl(prefix, other)
 
     @namespace('ayns')
-    def on_evaluate(self, path, ctx):
+    def on_evaluate_impl(self, path, ctx):
         raise NotImplementedError()
 
     @namespace('ayns')

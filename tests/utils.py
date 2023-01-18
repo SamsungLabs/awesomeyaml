@@ -37,3 +37,16 @@ def square_f(x, a=1, b=0):
 
 def dummy(*args, **kwargs):
     return (args, kwargs)
+
+
+def malicious():
+    raise RuntimeError('Malicious function called!')
+
+
+class persistent_id(int):
+    def __new__(self, obj):
+        super().__new__(id(obj))
+
+    def __init__(self, obj):
+        self.obj = obj
+

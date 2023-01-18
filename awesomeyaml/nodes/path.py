@@ -107,8 +107,8 @@ class PathNode(ConfigList):
             raise ValueError(f'Unknown reference point provided for a PathNode: {ref_point!r}.')
 
     @namespace('ayns')
-    def on_evaluate(self, path, ctx):
-        args = ConfigList.ayns.on_evaluate(self, path, ctx)
+    def on_evaluate_impl(self, path, ctx):
+        args = super().ayns.on_evaluate_impl(path, ctx)
         ref_point, ref_point_args = self._ref_point_parsed
         if ref_point == '':
             ret = pathlib.Path('.').joinpath(*args)

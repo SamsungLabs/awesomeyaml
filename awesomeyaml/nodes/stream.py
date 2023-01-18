@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .list import ConfigList
-from ..namespace import namespace, staticproperty
+from ..namespace import namespace
 
 
 class StreamNode(ConfigList):
@@ -29,14 +29,8 @@ class StreamNode(ConfigList):
         return self.builder.stages
 
     @namespace('ayns')
-    def on_premerge(self, path, into):
+    def on_premerge_impl(self, path, into):
         self.clear()
         self.builder.flatten()
         self.append(self.builder.stages[0])
         return self.builder.stages[0].ayns.on_premerge(path, into)
-
-    #@namespace('ayns')
-    #@staticproperty
-    #@staticmethod
-    #def is_leaf():
-    #    return True

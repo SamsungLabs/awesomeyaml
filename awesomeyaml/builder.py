@@ -18,6 +18,7 @@ import contextlib
 import collections.abc as cabc
 
 from .nodes.node import ConfigNode
+from . import errors
 
 
 class Builder():
@@ -93,6 +94,7 @@ class Builder():
         '''
         return self._current_file
 
+    @errors.api_entry
     def add_multiple_sources(self, *sources, raw_yaml=None, filename=None, safe=None):
         ''' Adds multiple sources using :py:meth:`add_source` function. ``raw_yaml``, ``filename`` and ``safe`` have the same meaning
             as in :py:meth:`add_source` and can be either a single scalar, in which case its value is broadcasted
@@ -120,6 +122,7 @@ class Builder():
         for source, raw, fname, sflag in zip(sources, raw_yaml, filename, safe):
             self.add_source(source, raw_yaml=raw, filename=fname, safe=sflag)
 
+    @errors.api_entry
     def add_source(self, source, raw_yaml=None, filename=None, safe=None):
         ''' Parse a stream of yaml documents specified by ``source`` and add them to the list of stages.
             The documents stream can be provided either directly or read from a file - the behaviour is determined
@@ -191,6 +194,7 @@ class Builder():
         finally:
             self._current_file = None
 
+    @errors.api_entry
     def build(self):
         ''' Preprocesses all stages and merges them to construct a single config node.
             This node is suitable to be passed to :py:class:`awesomeyaml.eval_context.EvalContext`
@@ -206,6 +210,7 @@ class Builder():
         self.flatten()
         return self.stages[0]
 
+    @errors.api_entry
     def preprocess(self):
         ''' Preprocesses all stages.
 
@@ -255,6 +260,7 @@ class Builder():
 
             assert _i != i, 'infinite loop?'
 
+    @errors.api_entry
     def flatten(self):
         ''' Flattens the list of stages be iteratively merging all stages into a single one.
             Merging happens in the same order in which stages are stored, i.e.::
@@ -273,7 +279,8 @@ class Builder():
             except AttributeError:
                 self.stages[0] = new_stage
 
-        self.stages[0].ayns._require_all_new([], 'the node comes from the first config tree in a merging sequence and the current config is empty')
+        with errors.rethrow(errors.MergeError, self.stages[0], None, None):
+            self.stages[0].ayns._require_all_new([], 'the node comes from the first config tree in a merging sequence and the current config is empty')
         if len(self.stages) < 2:
             return
 

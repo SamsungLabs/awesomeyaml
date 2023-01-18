@@ -18,7 +18,9 @@ from pathlib import Path
 from contextlib import ExitStack
 
 from .utils import setUpModule
+
 from awesomeyaml.utils import import_name
+from awesomeyaml.errors import ParsingError, PreprocessError, PremergeError, MergeError, EvalError
 
 
 class YamlFileTest():
@@ -77,7 +79,10 @@ class YamlFileTest():
         with ExitStack() as stack:
             if self.expected_error:
                 assert not self.expected_result and not self.validate_code
-                exc_type = import_name(self.expected_error)
+                if self.expected_error in globals():
+                    exc_type = globals()[self.expected_error]
+                else:
+                    exc_type = import_name(self.expected_error)
                 exp_msg = self.expected_error_msg
                 if not exp_msg:
                     exp_msg = None

@@ -6,5 +6,5 @@ e: 15
 
 
 ###ERROR
-ValueError
-Node 'e' .* requires that the destination already exists but the current config tree does not contain a node under this path .*
+MergeError
+.*Node 'e' .* requires that the destination already exists but the current config tree does not contain a node under this path .*

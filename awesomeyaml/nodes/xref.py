@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .scalar import ConfigScalar
-from .composed import ComposedNode
+from .node_path import NodePath
 from ..namespace import namespace, staticproperty
 
 
@@ -22,8 +22,8 @@ class XRefNode(ConfigScalar(str)):
         super().__init__(value, **kwargs)
 
     @namespace('ayns')
-    def on_evaluate(self, path, ctx):
-        chain = [ComposedNode.get_str_path(path)]
+    def on_evaluate_impl(self, path, ctx):
+        chain = [NodePath.get_str_path(path)]
         curr = self
         while isinstance(curr, XRefNode):
             try:
@@ -36,7 +36,6 @@ class XRefNode(ConfigScalar(str)):
             curr = ref
         assert curr is not self
         return ctx.evaluate_node(curr, prefix=chain[-1])
-        #return curr.ayns.on_evaluate(path, ctx)
 
     @namespace('ayns')
     @staticproperty

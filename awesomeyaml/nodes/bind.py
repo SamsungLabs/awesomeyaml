@@ -76,11 +76,12 @@ class BindNode(FunctionNode):
     '''
 
     @namespace('ayns')
-    def on_evaluate(self, path, ctx):
+    def on_evaluate_impl(self, path, ctx):
+        self.ayns._require_safe(path)
         _func = self._func
         if isinstance(_func, str):
             _func = import_name(_func)
-        args = ConfigDict.ayns.on_evaluate(self, path, ctx)
+        args = ConfigDict.ayns.on_evaluate_impl(self, path, ctx)
         p, kw_p, kw = FunctionNode._resolve_args(_func, args)
         return partial(_func, *p, **kw_p, **kw)
 

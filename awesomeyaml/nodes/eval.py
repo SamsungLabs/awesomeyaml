@@ -63,7 +63,8 @@ class EvalNode(ConfigScalar(str)):
         self.persistent_namespace = persistent_namespace
 
     @namespace('ayns')
-    def on_evaluate(self, path, ctx):
+    def on_evaluate_impl(self, path, ctx):
+        self.ayns._require_safe(path)
         code_hash = hashlib.md5(str(self).encode('utf-8')).hexdigest()
         eval_module_name = f'{EvalNode._top_namespace_module_name}.{str(path).replace(".", "_")}_0x{code_hash}'
 
@@ -84,7 +85,7 @@ class EvalNode(ConfigScalar(str)):
             ret = eval(lines[-1].strip(), gbls, lcls)
         except:
             et, e, _ = sys.exc_info()
-            raise EvalError(f'Exception occurred while evaluation an eval node {path!r} from file {str(self._source_file)!r}:\n\nCode:\n{os.linesep.join(lines)}\n\nError:\n{et.__name__}: {e}') from None
+            raise RuntimeError(f'Exception occurred.\n\nCode:\n{os.linesep.join(lines)}\n\nError:\n{et.__name__}: {e}') from None
 
         if len(lines) > 1 and self.persistent_namespace:
             eval_node_module = types.ModuleType(eval_module_name, 'Dynamic module to evaluate awesomeyaml !eval node')
@@ -93,7 +94,7 @@ class EvalNode(ConfigScalar(str)):
 
         if isinstance(ret, ConfigNode):
             assert ret is not self
-            ret = ret.ayns.on_evaluate(path, ctx)
+            ret = ctx.evaluate_node(ret, path)
         return ret
 
     @namespace('ayns')

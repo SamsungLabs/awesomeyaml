@@ -13,9 +13,11 @@
 # limitations under the License.
 
 from .nodes.node import ConfigNode
-from .nodes.composed import ComposedNode, NodePath
+from .nodes.node_path import NodePath
 from .namespace import NamespaceableMeta
 from .utils import Bunch
+from . import errors
+from . import utils
 
 import copy
 
@@ -79,32 +81,33 @@ class EvalContext(metaclass=NamespaceableMeta):
         self.cfg = config_dict
         self._removed_nodes = {}
         self._eval_cache = {}
-        self._done = False
+        self._eval_cache_id = {}
         self._eval_symbols = copy.copy(EvalContext._default_eval_symbols)
         if eval_symbols:
             self._eval_symbols.update(eval_symbols)
 
     def get_node(self, *path, **kwargs):
-        path = ComposedNode.get_list_path(*path)
+        path = NodePath.get_list_path(*path)
         if str(path) in self._eval_cache:
             return self._eval_cache[str(path)]
         return self.cfg.ayns.get_node(path, **kwargs)
 
     def get_evaluated_node(self, nodepath):
-        nodepath = ComposedNode.get_list_path(nodepath, check_types=False) or NodePath()
+        nodepath = NodePath.get_list_path(nodepath, check_types=False) or NodePath()
         node = self.ayns.get_node(nodepath)
         if str(nodepath) in self._eval_cache:
             return node
 
         return self.evaluate_node(node, prefix=nodepath)
 
+    @errors.api_entry
     def evaluate_node(self, cfgobj, prefix=None):
         if not isinstance(cfgobj, ConfigNode):
             return cfgobj
+        if id(cfgobj) in self._eval_cache_id:
+            return self._eval_cache_id[id(cfgobj)]
 
-        prefix = ComposedNode.get_list_path(prefix, check_types=False) or NodePath()
-        if str(prefix) in self._eval_cache:
-            return self._eval_cache[str(prefix)]
+        prefix = NodePath.get_list_path(prefix, check_types=False) or NodePath()
 
         evaluated_parent = None
         if prefix:
@@ -115,21 +118,26 @@ class EvalContext(metaclass=NamespaceableMeta):
 
             evaluated_parent = enode
 
-        evaluated_cfgobj = cfgobj.ayns.evaluate_node(prefix, self)
+        evaluated_cfgobj = cfgobj.ayns.on_evaluate(prefix, self)
         if evaluated_parent is not None:
             evaluated_parent[prefix[-1]] = evaluated_cfgobj
 
         self._eval_cache[str(prefix)] = evaluated_cfgobj
+        self._eval_cache_id[utils.persistent_id(cfgobj)] = evaluated_cfgobj
         return evaluated_cfgobj
 
+    @errors.api_entry
     def evaluate(self):
         ''' Returns:
                 `awesomeyaml.utils.Bunch` representing evaluated config node.
         '''
         self._eval_cache.clear()
+        self._eval_cache_id.clear()
         self.ecfg = EvalContext.PartialChild(NodePath(), self, self.cfg)
         ret = self.evaluate_node(self.cfg)
         self.ecfg = ret
+        self._eval_cache.clear()
+        self._eval_cache_id.clear()
         return ret
 
     @staticmethod

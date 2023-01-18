@@ -12,127 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
-import collections.abc as cabc
-
 from .node import ConfigNode
 from ..namespace import Namespace, staticproperty
 from ..utils import notnone_or
-
-
-class NodePath(list):
-    def __str__(self):
-        return ComposedNode.get_str_path(self)
-
-    def __repr__(self):
-        return repr(self.__str__())
-
-    def __add__(self, other):
-        return NodePath(list.__add__(self, other))
-
-    def __hash__(self):
-        return hash(str(self))
+from .node_path import NodePath
 
 
 class ComposedNode(ConfigNode):
-    _path_component_regex = re.compile(r'''
-                # the available options are:
-                    (?:^|(?<=\.)) # ...if it is either at the beginning or preceded by a dot (do not capture)
-                    ( [a-zA-Z0-9_]+ ) # a textual identifier (captured by the fist capture group)
-                | # OR...
-                    \[ (-?[0-9]+) \] # a (possibly negative) integer in [] (with second capture group catching the integer inside)
-                | # OR...
-                    (?<!^) # ... if it's not the first character ...
-                    \. # a single dot
-                    (?:(?!$)(?!\.)(?!\[)) # ... does not appear at the end and is not followed by either another dot or [ (do not capture)
-                ''', re.VERBOSE) # verbose flag enables us to have comments, whitespace (inc. multi-line) etc. for better readability
-
-    @staticmethod
-    def split_path(path_str, validate=True):
-        matches = ComposedNode._path_component_regex.finditer(path_str)
-        if validate:
-            _matches_cache = []
-            beg = None
-            end = None
-            for match in matches:
-                _matches_cache.append(match)
-                if beg is None:
-                    beg = match.start()
-                # in the first iteration, check is beg (i.e. match.start()) == 0 to make sure we do not have an invalid prefix
-                # in every other iteration make sure the new match strictly follow the previous one, if it doesn't that means
-                # that there was an invalid part between them (invalid here means not matching our regular expression)
-                if match.start() != (end if end is not None else 0):
-                    raise ValueError(f'Invalid path: {path_str!r}')
-                end = match.end()
-
-            # the path is fine at the beginning and internally doesn't have any "gaps" but has an incorrect suffix
-            # (i.e. a part at the end which doesn't match our regular expression)
-            if path_str and end != len(path_str):
-                raise ValueError(f'Invalid path: {path_str!r}')
-
-            matches = _matches_cache
-        
-        for match in matches:
-            if match.group(1): # name
-                yield str(match.group(1))
-            elif match.group(2):  # index
-                yield int(match.group(2))
-            else:
-                # sanity check
-                assert match.group(0) == '.'
-
-    @staticmethod
-    def join_path(path_list):
-        ret = ''
-        for component in path_list:
-            ret = ret + ComposedNode._get_child_accessor(component, ret)
-        return ret
-
-    @staticmethod
-    def _get_child_accessor(childname, myname=''):
-        if isinstance(childname, int):
-            return f'[{childname}]'
-        return ('.' if str(myname) else '') + str(childname)
-
-    @staticmethod
-    def get_list_path(*path, check_types=True):
-        if not path:
-            return NodePath()
-        if len(path) == 1:
-            if not isinstance(path[0], int):
-                path = path[0]
-
-        if path is None:
-            return NodePath()
-        if not isinstance(path, cabc.Sequence) or isinstance(path, str):
-            # split_path should only return str and ints so we don't need to check for types
-            path = ComposedNode.split_path(str(path))
-        elif check_types:
-            for i, c in enumerate(path):
-                # we need to check it because if something is not a string nor an int it's ambiguous which casting should be done
-                if not isinstance(c, str) and (not isinstance(c, int) or isinstance(c, bool)):
-                    raise ValueError(f'node path should be a list of ints and/or str only, got {type(c)} at position {i}: {c}')
-
-        return NodePath(path)
-
-    @staticmethod
-    def get_str_path(*path, check_types=True):
-        if not path:
-            return ''
-        if len(path) == 1:
-            path = path[0]
-
-        if path is None:
-            return ''
-        if isinstance(path, int):
-            return ComposedNode._get_child_accessor(path)
-        if isinstance(path, cabc.Sequence) and not isinstance(path, str):
-            return ComposedNode.join_path(path)
-
-        if check_types and not isinstance(path, str):
-            raise ValueError(f'Unexpected type: {type(path)}, expected int, sequence or str')
-        return path
-
     def _get_child_kwargs(self, child=None):
         ret = {}
         if not hasattr(self, '_delete'): # happens when unpickling! children are being populated before attributes are set, but its ok since we assume pickled objects are ok anyway, so no need to fix things
@@ -213,7 +99,7 @@ class ComposedNode(ConfigNode):
 
         @staticmethod
         def _get_node(root, access_fn, query_fn, *path, intermediate=False, names=False, incomplete=None):
-            path = ComposedNode.get_list_path(*path)
+            path = NodePath.get_list_path(*path)
 
             ret = []
             def _add(child, name):
@@ -242,7 +128,7 @@ class ComposedNode(ConfigNode):
                 if incomplete is None:
                     return None
 
-                raise KeyError(f'{ComposedNode.join_path(path)!r} does not exist within {root!r}')
+                raise KeyError(f'{NodePath.join_path(path)!r} does not exist within {root!r}')
 
             return ret if intermediate else ret[-1]
 
@@ -261,7 +147,7 @@ class ComposedNode(ConfigNode):
 
         def get_node(self, *path, intermediate=False, names=False, incomplete=False):
             ''' Inputs:
-                    - `path` either a list of names (str or int) which should be looked up, or a str equivalent to calling ComposedNode.join_path on an analogical list
+                    - `path` either a list of names (str or int) which should be looked up, or a str equivalent to calling NodePath.join_path on an analogical list
                     - `intermediate` if True, returned is a list of nodes accessed (including self), in order of accessing, otherwise only the final node is returned (i.e. the last element of the list)
                     - `names` if True, returned are tuples of `(node, name, path)`, where `node` is an object represting a node with name `name` (relative to its parent) and path `path` (list of names, relative to the self),
                         otherwise only the node object is returned.
@@ -311,7 +197,7 @@ class ComposedNode(ConfigNode):
             raise NotImplementedError()
 
         def filter_nodes(self, condition, prefix=None, removed=None):
-            prefix = ComposedNode.get_list_path(prefix, check_types=False) or NodePath()
+            prefix = NodePath.get_list_path(prefix, check_types=False) or NodePath()
             to_del = []
             to_re_set = []
             for name, child in self.ayns.named_children():
@@ -337,8 +223,8 @@ class ComposedNode(ConfigNode):
 
             return self
 
-        def map_nodes(self, map_fn, prefix=None, cache_results=True, cache=None, leafs_only=True):
-            prefix = ComposedNode.get_list_path(prefix, check_types=False) or NodePath()
+        def map_nodes(self, map_fn, prefix=None, cache_results=True, cache=None, leafs_only=True, include_self=True, recurse=True):
+            prefix = NodePath.get_list_path(prefix, check_types=False) or NodePath()
             to_re_set = []
             if cache_results and cache is None:
                 cache = {}
@@ -349,7 +235,7 @@ class ComposedNode(ConfigNode):
                 else:
                     child_path = prefix + [name]
                     possibly_new_child = child
-                    if isinstance(child, ComposedNode):
+                    if isinstance(child, ComposedNode) and recurse:
                         possibly_new_child = possibly_new_child.ayns.map_nodes(map_fn, prefix=child_path, cache_results=cache_results, cache=cache, leafs_only=leafs_only)
                     else:
                         possibly_new_child = map_fn(child_path, possibly_new_child)
@@ -365,14 +251,14 @@ class ComposedNode(ConfigNode):
                 self.ayns.set_child(name, child)
 
             ret = self
-            if not leafs_only:
+            if not leafs_only and include_self:
                 ret = map_fn(prefix, self)
 
             return ret
 
         def nodes_with_paths(self, prefix=None, recursive=True, include_self=False, allow_duplicates=True):
             memo = set()
-            prefix = ComposedNode.get_list_path(prefix, check_types=False) or NodePath()
+            prefix = NodePath.get_list_path(prefix, check_types=False) or NodePath()
             if include_self:
                 memo.add(id(self))
                 yield prefix, self
@@ -426,41 +312,40 @@ class ComposedNode(ConfigNode):
         def clear(self):
             self._children.clear()
 
-        def preprocess(self, builder):
-            return self.ayns.map_nodes(lambda path, node: node.ayns.on_preprocess(path, builder), cache_results=True, leafs_only=False)
+        def on_preprocess_impl(self, path, builder):
+            return self.ayns.map_nodes(lambda child_path, node: node.ayns.on_preprocess(child_path, builder), prefix=path, cache_results=True, leafs_only=False, include_self=False, recurse=False)
 
-        def premerge(self, into=None):
-            return self.ayns.map_nodes(lambda path, node: node.ayns.on_premerge(path, into), cache_results=True, leafs_only=False)
+        def on_premerge_impl(self, path, into):
+            return self.ayns.map_nodes(lambda child_path, node: node.ayns.on_premerge(child_path, into), prefix=path, cache_results=True, leafs_only=False, include_self=False, recurse=False)
 
-        def nested_merge(self, other, prefix):
+        def on_merge_impl(self, path, other):
+            if not isinstance(other, ComposedNode):
+                return ConfigNode.ayns.on_merge_impl(self, path, other)
+
             if other.ayns.delete:
                 removed = set()
                 def maybe_keep(path, node):
                     other_node = other.ayns.get_first_not_missing_node(path)
                     return node.ayns.has_priority_over(other_node)
 
-                self.ayns.filter_nodes(maybe_keep, prefix=prefix, removed=removed)
+                self.ayns.filter_nodes(maybe_keep, prefix=path, removed=removed)
                 if not self._children and other.ayns.has_priority_over(self, if_equal=True):
-                    removed.add(prefix)
-                    other.ayns._require_all_new(prefix, f'note: the entire config tree under {prefix!r} has been removed due to node merging with a !del node', exceptions=removed)
+                    removed.add(path)
+                    other.ayns._require_all_new(path, f'note: the entire config tree under {path!r} has been removed due to node merging with a !del or !clear node', exceptions=removed)
                     return other
 
-            _this_path = ComposedNode.get_str_path(prefix)
+            _this_path = NodePath.get_str_path(path)
             if not _this_path:
                 _this_path = '<top-level node>'
 
             for key, value in other._children.items():
                 child = self.ayns.get_child(key, None)
                 if child is None:
-                    value.ayns._require_all_new(prefix + [key], f'last parent: {_this_path!r}, from file: {self.ayns.source_file!r}')
+                    value.ayns._require_all_new(path + [key], f'last parent: {_this_path!r}, from file: {self.ayns.source_file!r}')
                     self.ayns.set_child(key, value)
                 else:
-                    merge = False
-                    try:
-                        possibly_new_child = child.ayns.nested_merge(value, prefix=prefix + [key])
-                        merge = True
-                    except (TypeError, AttributeError):
-                        pass
+                    merge = isinstance(child, ComposedNode)
+                    possibly_new_child = child.ayns.on_merge(path + [key], value)
 
                     if merge:
                         if not possibly_new_child and not possibly_new_child.ayns.has_priority_over(value) and value.ayns.explicit_delete:
@@ -469,13 +354,12 @@ class ComposedNode(ConfigNode):
                             self.ayns.set_child(key, possibly_new_child)
                             possibly_new_child._metadata = { **child._metadata, **possibly_new_child._metadata }
                     else:
-                        value.ayns._require_all_new(prefix + [key], f'last parent: {_this_path!r}, from file: {self.ayns.source_file!r}', include_self=False)
-                        if value.ayns.has_priority_over(child, if_equal=True):
-                            if not value and value.ayns.explicit_delete:
+                        if possibly_new_child is not child:
+                            possibly_new_child.ayns._require_all_new(path + [key], f'last parent: {_this_path!r}, from file: {self.ayns.source_file!r}', include_self=False)
+                            if not possibly_new_child and possibly_new_child.ayns.explicit_delete:
                                 self.ayns.remove_child(key)
                             else:
-                                self.ayns.set_child(key, value)
-                                value._metadata = { **child._metadata, **value._metadata }
+                                self.ayns.set_child(key, possibly_new_child)
 
             if other.ayns.has_priority_over(self, if_equal=True):
                 self._priority = other._priority
@@ -486,10 +370,6 @@ class ComposedNode(ConfigNode):
                 self._metadata = { **other._metadata, **self._metadata }
 
             return self
-
-        def merge(self, other):
-            other.ayns.premerge(self)
-            return self.ayns.nested_merge(other, prefix=NodePath())
 
         @staticproperty
         @staticmethod

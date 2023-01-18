@@ -17,8 +17,10 @@ import threading
 import contextlib
 import collections.abc as cabc
 
+from .node_path import NodePath
 from ..namespace import NamespaceableMeta, Namespace, staticproperty
 from ..utils import persistent_id, notnone_or
+from ..import errors
 
 
 _kwargs_to_inherit = [
@@ -28,6 +30,27 @@ _kwargs_to_inherit = [
     'implicit_safe',
     'pyyaml_node'
 ]
+
+
+def decorator_factory(error_type):
+    def decorator(func):
+        def impl(*args, **kwargs):
+            self = args[0]
+            path = args[1] if len(args) > 1 else kwargs['path']
+            other = args[2] if len(args) > 2 else kwargs.get('other', None)
+            if not isinstance(other, ConfigNode):
+                other = None
+            with errors.rethrow(error_type, self, path, other):
+                return func(*args, **kwargs)
+
+        return impl
+    return decorator
+
+
+rethrow_as_preprocess_error = decorator_factory(errors.PreprocessError)
+rethrow_as_premerge_error = decorator_factory(errors.PremergeError)
+rethrow_as_merge_error = decorator_factory(errors.MergeError)
+rethrow_as_eval_error = decorator_factory(errors.EvalError)
 
 
 class ConfigNodeMeta(NamespaceableMeta):
@@ -138,7 +161,7 @@ class ConfigNode(metaclass=ConfigNodeMeta):
     @contextlib.contextmanager
     def default_safe_flag(value):
         if not hasattr(ConfigNode._default_safe, 'value'):
-            ConfigNode._default_safe.value = False
+            ConfigNode._default_safe.value = True
 
         old = ConfigNode._default_safe.value
         ConfigNode._default_safe.value = value and old
@@ -257,38 +280,69 @@ class ConfigNode(metaclass=ConfigNodeMeta):
                 return if_equal
             return self.ayns.priority > other.ayns.priority
 
-        def preprocess(self, builder):
-            return self.ayns.on_preprocess([], builder)
 
+        #
+        # The following functions follow a high-level naming conention as follows:
+        #   - <name> - is a top level method that should be called on the top-level config objects only
+        #   - on_<name> - is an equivalent that is being called recursively for all nodes in the config object when <name> is called
+        #   - on_<name>_impl - is the part of "on_<name>" that can/should be overwritten by derived classes - it should always be called indirectly via "on_<name>"
+        #
+        # Note: "evaluate" does not exist as it is implemented in EvalContext (since we need to keep state in a separate class) - we could have "evaluate" here
+        # and delegate functionality to the EvalContext but to prevent possible errors it's better to remove it altogether (e.g., to avoid accidental recursive calls)
+
+        def preprocess(self, builder):
+            return self.ayns.on_preprocess(NodePath(), builder)
+
+        @rethrow_as_preprocess_error
         def on_preprocess(self, path, builder):
+            return self.ayns.on_preprocess_impl(path, builder)
+
+        def on_preprocess_impl(self, path, builder):
             return self
+
 
         def premerge(self, into=None):
-            return self.ayns.on_premerge([], into)
+            return self.ayns.on_premerge(NodePath(), into)
 
+        @rethrow_as_premerge_error
         def on_premerge(self, path, into):
+            return self.ayns.on_premerge_impl(path, into)
+
+        def on_premerge_impl(self, path, into):
             return self
 
-        def evaluate_node(self, path, root):
-            evaluated = self.ayns.on_evaluate(path, root)
-            assert evaluated is not self
-            assert not isinstance(evaluated, ConfigNode)
-            return evaluated
-
-        def on_evaluate(self, path, ctx):
-            return self.ayns.value
 
         def merge(self, other):
-            self.premerge(other)
-
             if other is None:
                 if not self.ayns.allow_new:
                     raise ValueError('A top-level destination node does not exist but this top-level node has a !notnew flag enabled!')
                 return self
 
+            other.ayns.premerge(self)
+            return self.ayns.on_merge(NodePath(), other)
+
+        @rethrow_as_merge_error
+        def on_merge(self, path, other):
+            return self.ayns.on_merge_impl(path, other)
+
+        def on_merge_impl(self, path, other):
             if self.ayns.has_priority_over(other):
+                self._metadata = { **other._metadata, **self._metadata }
                 return self
+            other._metadata = { **self._metadata, **other._metadata }
             return other
+
+
+        @rethrow_as_eval_error
+        def on_evaluate(self, path, root):
+            evaluated = self.ayns.on_evaluate_impl(path, root)
+            assert evaluated is not self
+            assert not isinstance(evaluated, ConfigNode)
+            return evaluated
+
+        def on_evaluate_impl(self, path, ctx):
+            return self.ayns.value
+
 
         def get_node_info_to_save(self):
             ''' This function should return a dict with values which one wants to preserve when dumping the node.
@@ -302,6 +356,7 @@ class ConfigNode(metaclass=ConfigNodeMeta):
             ret['priority'] = self._priority
             ret['delete'] = self._delete #if not self._implicit_delete else None
             ret['allow_new'] = self._allow_new
+            ret['safe'] = self._safe
             return ret
 
         @property
@@ -313,6 +368,9 @@ class ConfigNode(metaclass=ConfigNodeMeta):
                 'implicit_delete': self._implicit_delete,
                 'allow_new': self._allow_new,
                 'implicit_allow_new': self._implicit_allow_new,
+                'safe': self._safe,
+                'implicit_safe': self._implicit_safe,
+                'default_safe': self._default_safe,
                 'source_file': self._source_file,
                 'metadata': self._metadata
             }
@@ -337,6 +395,10 @@ class ConfigNode(metaclass=ConfigNodeMeta):
                 return
             if not self.ayns.allow_new and (exceptions is None or path not in exceptions):
                 raise ValueError(f'Node {path!r} (source file: {self._source_file!r}) requires that the destination already exists but the current config tree does not contain a node under this path ({reason})')
+
+        def _require_safe(self, path):
+            if not self.ayns.safe:
+                raise ValueError(f'The node {path!r} comes from a source marked as "!unsafe", avoiding execution')
 
     def _propagate_implicit_values(self):
         return

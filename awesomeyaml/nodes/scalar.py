@@ -171,7 +171,7 @@ class ConfigScalar(ConfigScalarMarker, metaclass=ConfigScalarMeta):
             yield prefix, self
 
     @namespace('ayns')
-    def on_evaluate(self, path, ctx):
+    def on_evaluate_impl(self, path, ctx):
         return self._get_native_value()
 
     def _get_native_value(self):

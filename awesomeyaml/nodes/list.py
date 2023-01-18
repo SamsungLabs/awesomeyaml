@@ -123,10 +123,7 @@ class ConfigList(ComposedNode, list):
             self._children = { idx: child for idx, child in enumerate(self) }
 
     @namespace('ayns')
-    def nested_merge(self, other, prefix):
-        if not isinstance(other, ComposedNode):
-            raise TypeError('ComposedNode expected')
-
+    def on_merge_impl(self, prefix, other):
         if isinstance(other, dict):
             _missing_keys = []
             for key in other.ayns.children_names():
@@ -146,12 +143,13 @@ class ConfigList(ComposedNode, list):
             current = self.ayns.get_first_not_missing_node(path)
             return node.ayns.has_priority_over(current, if_equal=True)
 
-        other.ayns.filter_nodes(keep_if_exists)
+        if isinstance(other, ComposedNode):
+            other.ayns.filter_nodes(keep_if_exists)
 
-        return super().ayns.nested_merge(other, prefix)
+        return super().ayns.on_merge_impl(prefix, other)
 
     @namespace('ayns')
-    def on_evaluate(self, path, ctx):
+    def on_evaluate_impl(self, path, ctx):
         return list(ctx.evaluate_node(value, path+[key]) for key, value in self.ayns.named_children())
 
     @namespace('ayns')

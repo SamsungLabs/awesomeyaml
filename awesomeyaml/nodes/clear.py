@@ -24,10 +24,10 @@ class ClearNode(ConfigNode):
         super().__init__(*args, **kwargs)
 
     @namespace('ayns')
-    def on_premerge(self, path, into):
+    def on_premerge_impl(self, path, into):
         node = into.ayns.get_node(path)
         if node is None:
-            raise KeyError(f'Node {str(self)!r} does not exist in the previous context (possibly deleted?) - while processing a {type(self).__name__!r} node at {path!r}')
+            raise KeyError(f'Node {str(self)!r} does not exist in the previous context (possibly deleted?)')
         node.clear()
         return node
 

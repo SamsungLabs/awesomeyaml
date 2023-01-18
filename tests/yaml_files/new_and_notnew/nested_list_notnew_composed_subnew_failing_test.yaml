@@ -8,5 +8,5 @@ f: !notnew
 
 
 ###ERROR
-ValueError
-Node 'f.dar' .*
+MergeError
+.*Node 'f.dar' .*

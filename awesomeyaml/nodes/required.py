@@ -24,8 +24,8 @@ class RequiredNode(ConfigNode):
         super().__init__(*args, **kwargs)
 
     @namespace('ayns')
-    def on_evaluate(self, path, ctx):
-        raise ValueError(f'RequiredNode should not appear during evaluation: {path!r}')
+    def on_evaluate_impl(self, path, ctx):
+        raise ValueError(f'A required node is missing')
 
     @namespace('ayns')
     @staticproperty

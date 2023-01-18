@@ -36,7 +36,7 @@ class CmdlineTest(unittest.TestCase):
         self.assertEqual(cfg.foo[2], 10)
 
     def test_typo(self):
-        with self.assertRaisesRegex(ValueError, r"Node 'fooo' .*"):
+        with self.assertRaisesRegex(MergeError, r".*Node 'fooo' .*"):
             _ = Config.build_from_cmdline("{ foo: 12 }", "fooo=1")
 
     def test_explicit_not_typo(self):
@@ -45,7 +45,7 @@ class CmdlineTest(unittest.TestCase):
         self.assertEqual(cfg.fooo, 1)
 
     def test_missing_nested(self):
-        with self.assertRaisesRegex(MergeError, r"An error occurred while merging nodes under path: 'foo.bar'.*"):
+        with self.assertRaisesRegex(MergeError, r"An error occurred while merging .* nodes under path: 'foo.bar'.*"):
             _ = Config.build_from_cmdline("{ foo: { bar: [1, 2] }}", "foo.bar[2]=3")
 
 

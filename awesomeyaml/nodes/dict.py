@@ -106,14 +106,11 @@ class ConfigDict(ComposedNode, dict):
             self._set(k, v)
 
     @namespace('ayns')
-    def nested_merge(self, other, prefix):
-        if not isinstance(other, dict) and not isinstance(other, cabc.Sequence):
-            raise TypeError('Dict or sequence expected')
-
-        return super().ayns.nested_merge(other, prefix)
+    def on_merge_impl(self, prefix, other):
+        return super().ayns.on_merge_impl(prefix, other)
 
     @namespace('ayns')
-    def on_evaluate(self, path, ctx):
+    def on_evaluate_impl(self, path, ctx):
         return Bunch((key, ctx.evaluate_node(value, path+[key])) for key, value in self.ayns.named_children())
 
     def __repr__(self, simple=False):

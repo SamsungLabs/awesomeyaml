@@ -42,7 +42,8 @@ class ImportNode(ConfigScalar(str)):
         super().__init__(name, **kwargs)
 
     @namespace('ayns')
-    def on_evaluate(self, path, ctx):
+    def on_evaluate_impl(self, path, ctx):
+        self.ayns._require_safe(path)
         return import_name(str(self))
 
     @namespace('ayns')
