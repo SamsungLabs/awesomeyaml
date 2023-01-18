@@ -111,7 +111,7 @@ class ConfigDict(ComposedNode, dict):
 
     @namespace('ayns')
     def on_evaluate_impl(self, path, ctx):
-        return Bunch((key, ctx.evaluate_node(value, path+[key])) for key, value in self.ayns.named_children())
+        return Bunch((ctx.evaluate_node(key), ctx.evaluate_node(value, path+[key])) for key, value in self.ayns.named_children())
 
     def __repr__(self, simple=False):
         dict_repr = '{' + ', '.join([f'{n!r}: {c.__repr__(simple=True)}' for n, c in self.ayns.named_children()]) + '}' # pylint: disable=no-value-for-parameter
