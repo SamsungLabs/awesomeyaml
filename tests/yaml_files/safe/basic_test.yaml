@@ -1,0 +1,6 @@
+!unsafe
+f: !call:tests.utils.malicious {}
+
+###ERROR
+EvalError
+.*The node 'f' comes from a source marked as "!unsafe".*
