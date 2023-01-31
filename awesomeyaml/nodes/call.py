@@ -53,7 +53,7 @@ class CallNode(FunctionNode):
     '''
     @namespace('ayns')
     def on_evaluate_impl(self, path, ctx):
-        self.ayns._require_safe(path)
+        self._check_safe(path)
         _func = self._func
         if isinstance(_func, str):
             _func = import_name(_func)

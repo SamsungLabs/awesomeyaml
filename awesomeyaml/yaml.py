@@ -52,8 +52,11 @@ class AwesomeyamlLoader(yaml.Loader):
         yield
         update_fn(value)
 
-    def construct_object(self, node, deep=False):
+    def construct_object(self, node, deep=False, convert=True):
         value = super().construct_object(node, deep=deep)
+        if not convert:
+            return value
+
         aynode = self._convert(value, node)
 
         if not deep and value is not aynode:
@@ -157,7 +160,7 @@ def parse_scalar(loader, node):
     implicit = (True, False) if plain else (False, True)
     notag = copy.deepcopy(node)
     notag.tag = loader.resolve(yaml.ScalarNode, notag.value, implicit)
-    ret = loader.construct_object(notag, deep=True)
+    ret = loader.construct_object(notag, deep=True, convert=False)
     if ret is None and node.value != '':
         # we differentiate between explicit and implicit None
         # for explicit None, return ConfigNode(None) so that "value is None"

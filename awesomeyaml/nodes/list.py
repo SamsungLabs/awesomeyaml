@@ -26,21 +26,21 @@ class ConfigList(ComposedNode, list):
         ComposedNode.__init__(self, children={ i: v for i, v in enumerate(value) }, **kwargs)
         list.__init__(self, self._children.values())
 
-    def _validate_index(self, index, allow_append=False):
+    def _validate_index(self, index, strict=True):
         if not isinstance(index, int):
             raise TypeError(f'Index should be integer, got: {type(index)}')
-        if abs(index) >= len(self) and (not allow_append or index != len(self)):
+        if (abs(index) > len(self) or index == len(self)) and strict:
             raise IndexError('List index out of range')
         if index < 0:
             index = len(self) + index
 
-        return index
+        return min(len(self), max(0, index))
 
-    def _set(self, index, value, allow_append=False):
-        index = self._validate_index(index, allow_append=allow_append)
+    def _set(self, index, value, strict=True):
+        index = self._validate_index(index, strict=strict)
+        value = ComposedNode.ayns.set_child(self, index, value)
         try:
-            value = ComposedNode.ayns.set_child(self, index, value)
-            if allow_append and index == len(self):
+            if index == len(self):
                 list.append(self, value)
             else:
                 list.__setitem__(self, index, value)
@@ -78,7 +78,7 @@ class ConfigList(ComposedNode, list):
 
     @namespace('ayns')
     def set_child(self, index, value):
-        return self._set(index, value, allow_append=True)
+        return self._set(index, value, strict=False)
 
     @namespace('ayns')
     def remove_child(self, index):
@@ -106,6 +106,12 @@ class ConfigList(ComposedNode, list):
         for val in other:
             self.append(val)
 
+    def insert(self, index, value):
+        index = self._validate_index(index, strict=False)
+        self._children = { ((idx+1) if idx >= index else idx): value for idx, value in self._children.items() }
+        value = ComposedNode.ayns.set_child(self, index, value)
+        list.insert(self, index, value)
+
     if not utils.python_is_at_least(3, 7):
         # for python < 3.7 (i.e., 3.6 and older)
         # list subclasses are unpickled without calling
@@ -129,7 +135,7 @@ class ConfigList(ComposedNode, list):
             for key in other.ayns.children_names():
                 first_missing = None
                 try:
-                    self._validate_index(key, allow_append=False)
+                    self._validate_index(key, strict=True)
                 except IndexError:
                     _missing_keys.append(key.ayns.native_value)
                     if first_missing is None:

@@ -10,4 +10,4 @@ f: !bind:tests.utils.cubic_f{{ 'delete': False }}
 ###VALIDATE
 from tests.utils import cubic_f
 self.assertIs(result.f.func, cubic_f)
-self.assertEqual(result.f(2), 11)
+self.assertEqual(result.f(2), 19)

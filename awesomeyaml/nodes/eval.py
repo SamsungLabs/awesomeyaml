@@ -15,13 +15,29 @@
 from .scalar import ConfigScalar
 from .node import ConfigNode
 from ..namespace import namespace, staticproperty
-from ..errors import EvalError
 from ..utils import Bunch
 
 import os
 import sys
 import types
 import hashlib
+
+
+class EnsureSafeArg():
+    def __init__(self, ecfg_obj):
+        self.ecfg_obj = ecfg_obj
+
+    def __getitem__(self, key):
+        if key not in self:
+            node = self._cfgobj[key]
+            return self._eval_ctx.evaluate_node(node, self._path + [key])
+
+        return super().__getitem__(key)
+
+    def __getattr__(self, name):
+        #if name not in self:
+        #    raise AttributeError(f'Object {type(self).__name__!r} does not have attribute {name!r}')
+        return self[name]
 
 
 class EvalNode(ConfigScalar(str)):

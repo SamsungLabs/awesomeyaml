@@ -156,6 +156,54 @@ class ListNodeTest(unittest.TestCase):
             self.assertEqual(node, node2)
             self.assertEqual(node.ayns.node_info, node2.ayns.node_info)
 
+    def test_insert_not_empty(self):
+        from awesomeyaml.nodes.list import ConfigList
+        test = ConfigList([1, 2])
+        test.insert(0, 5)
+        self.assertEqual(len(test), 3)
+        self.assertIn(5, test)
+        self.assertIn(2, test._children)
+        self.assertNotIn(3, test._children)
+        self.assertListEqual(test, [5, 1, 2])
+        self.assertEqual(test._children[0], 5)
+        self.assertEqual(test._children[1], 1)
+        self.assertEqual(test._children[2], 2)
+
+        test.insert(1, 10)
+        self.assertEqual(len(test), 4)
+        self.assertIn(10, test)
+        self.assertIn(3, test._children)
+        self.assertNotIn(4, test._children)
+        self.assertListEqual(test, [5, 10, 1, 2])
+        self.assertEqual(test._children[0], 5)
+        self.assertEqual(test._children[1], 10)
+        self.assertEqual(test._children[2], 1)
+        self.assertEqual(test._children[3], 2)
+
+        test.insert(10000, -1)
+        self.assertEqual(len(test), 5)
+        self.assertIn(-1, test)
+        self.assertIn(4, test._children)
+        self.assertNotIn(5, test._children)
+        self.assertNotIn(10000, test._children)
+        self.assertListEqual(test, [5, 10, 1, 2, -1])
+        self.assertEqual(test._children[0], 5)
+        self.assertEqual(test._children[1], 10)
+        self.assertEqual(test._children[2], 1)
+        self.assertEqual(test._children[3], 2)
+        self.assertEqual(test._children[4], -1)
+
+    def test_insert_empty(self):
+        from awesomeyaml.nodes.list import ConfigList
+        test = ConfigList([])
+        test.insert(3, 5)
+        self.assertEqual(len(test), 1)
+        self.assertIn(5, test)
+        self.assertIn(0, test._children)
+        self.assertNotIn(3, test._children)
+        self.assertEqual(test[0], 5)
+        self.assertEqual(test.ayns.get_child(0), 5)
+
 
 if __name__ == '__main__':
     unittest.main()

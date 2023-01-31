@@ -36,7 +36,7 @@ class FunctionNode(ConfigDict):
             raise ValueError('Function name cannot be empty!')
 
         if args is not None and not isinstance(args, dict):
-            if isinstance(args, list) or isinstance(args, tuple):
+            if isinstance(args, (list, tuple)):
                 args = { idx: val for idx, val in enumerate(args) }
             else:
                 args = { 0: args }
@@ -50,19 +50,28 @@ class FunctionNode(ConfigDict):
     @namespace('ayns')
     def on_merge_impl(self, prefix, other):
         if isinstance(other, str):
-            self._func = other
-            self.clear()
+            if other.ayns.has_priority_over(self, if_equal=True):
+                self._func = other
+                self.clear()
+                self._replace_self(other)
+            else:
+                self._replace_other(other)
+
             return self
 
-        if isinstance(other, FunctionNode) and type(self) != type(other):
-            raise TypeError(f'Conflicting FunctionNode subclasses: {type(self)} and {type(other)}')
-
         try:
-            if self._func != other._func:
-                self.clear()
-                self._func = other._func
+            new_func = (self._func != other._func)
         except AttributeError:
-            pass
+            new_func = False
+
+        if new_func:
+            if not other.ayns.has_priority_over(self, if_equal=True):
+                self._replace_other(other)
+                return self
+
+            if other.ayns.delete:
+                self.clear()
+            self._func = other._func
 
         return super().ayns.on_merge_impl(prefix, other)
 
@@ -133,3 +142,14 @@ class FunctionNode(ConfigDict):
             kw_positional_args[idx_to_name[idx]] = value
 
         return unpack, kw_positional_args, keyword_args
+
+    def _check_safe(self, path):
+        self.ayns._require_safe(path)
+
+        unsafe_args = []
+        for p, arg in self.ayns.nodes_with_paths(prefix=path):
+            if not arg.ayns.safe:
+                unsafe_args.append(p)
+
+        if unsafe_args:
+            raise ValueError(f'Avoiding execution of the {self.ayns.tag!r} node under path {path!r} since the following arguments are "!unsafe":\n    {unsafe_args}')

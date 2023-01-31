@@ -5,4 +5,4 @@ f: !unsafe [0]
 
 ###ERROR
 EvalError
-.*The node 'f[0]' comes from a source marked as "!unsafe".*
+.*The node 'f' comes from a source marked as "!unsafe".*

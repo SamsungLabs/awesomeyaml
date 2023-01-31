@@ -39,7 +39,7 @@ def dummy(*args, **kwargs):
     return (args, kwargs)
 
 
-def malicious():
+def malicious(*args, **kwargs):
     raise RuntimeError('Malicious function called!')
 
 

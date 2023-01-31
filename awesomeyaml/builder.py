@@ -284,10 +284,11 @@ class Builder():
         if len(self.stages) < 2:
             return
 
+        root = self.stages[0]
         for i in range(1, len(self.stages)):
-            self.stages[0].ayns.merge(self.stages[i])
+            root = root.ayns.merge(self.stages[i])
 
-        self.stages = [self.stages[0]]
+        self.stages = [root]
 
     def get_lookup_dirs(self, ref_point):
         ''' Yields of list of directories where files should be searched for.

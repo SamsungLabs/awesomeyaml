@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections.abc as cabc
-
 from .composed import ComposedNode
 from ..namespace import namespace
 from ..utils import Bunch
@@ -101,8 +99,15 @@ class ConfigDict(ComposedNode, dict):
             #val.set_parent(None, None)
         return val
 
-    def update(self, other):
-        for k, v in other.items():
+    def update(self, other, **kwargs):
+        try:
+            itr = other.items()
+        except:
+            itr = iter(other)
+
+        for k, v in itr:
+            self._set(k, v)
+        for k, v in kwargs.items():
             self._set(k, v)
 
     @namespace('ayns')

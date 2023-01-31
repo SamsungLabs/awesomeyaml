@@ -327,9 +327,9 @@ class ConfigNode(metaclass=ConfigNodeMeta):
 
         def on_merge_impl(self, path, other):
             if self.ayns.has_priority_over(other):
-                self._metadata = { **other._metadata, **self._metadata }
+                self._replace_other(other, allow_promotions=False)
                 return self
-            other._metadata = { **self._metadata, **other._metadata }
+            other._replace_other(self, allow_promotions=False)
             return other
 
 
@@ -404,5 +404,110 @@ class ConfigNode(metaclass=ConfigNodeMeta):
     def _propagate_implicit_values(self):
         return
 
-    def _propagate_safe(self):
-        return
+    #
+    # The following methods are used to implement some core merging semantics - they are intended to be called whenever two nodes are merged.
+    # Depending on the desired outcome, if we are merging nodes "A <- B", one of the four possible outcomes should happen:
+    #   - if B has higher priority than A and we want to use B's memory location to store the output, one should call "B._replace_other(A)"
+    #   - if B has higher priority than A but we want to use A's memory location to store the output, one should call "A._replace_self(B)"
+    #   - if B has lower priority and we want to use B to store the result, "B._replace_self(A)" should be called
+    #   - finally, if B has lower priority and A is to be used to hold the result, "A._replace_other(B)" should be called
+    #
+    # In summary, the generic rule: "<resulting_node_obj>._replace_{self|other}(<other_node_obj>)" where <resulting_node_obj> is the object
+    # that is intended to be returned by the merging method and "{self|other}" depends on the relative priority between the two nodes.
+    #
+    # These methods >> DO NOT << handle the logic to perform merging of the nodes' content, it is assumed that the "<resulting_node_obj>" already
+    # holds correct content - which is the result of the merge - at the moment of calling these methods.
+    # However, the methods might still modify some class-specific content via promotion mechanism (conditioned on the relevant argument).
+    # Promotion happen when merging "A <- B" and one of the nodes has more specific type than the other, e.g., A is "!bind" node
+    # and B is a dict with "!del" - in such a case, it can happen that B is going to be the result of the merge (if the entire subtree under node A
+    # is deleted), but that would make the resulting type to be "dict", rather than "!bind". To ensure correct behaviour, promotion mechanism will
+    # attempt to promote the "!bind" node to be the result rather than "dict" by moving the entire content of the dict node into the "!bind" and
+    # returning the latter. Therefore the final result is equivalent to returning "dict" but with extra elements specific to the "!bind" node.
+    #
+
+    def _replace_self(self, other, allow_promotions=False):
+        ''' Helper that should be called whenever "other" is merged into "self" with higher priority,
+            but we want to keep the resulting object inside the memory of "self".
+
+            Intuitively speaking, it will try to make "self" look like "other".
+        '''
+        self._priority = other._priority
+        self._delete = other._delete
+        if other._safe is not None:
+            self._safe = notnone_or(self._safe, True) and other._safe
+        if other._default_safe is not None:
+            self._default_safe = notnone_or(other._default_safe, True) and other._default_safe
+        self._metadata = { **self._metadata, **other._metadata }
+        if allow_promotions:
+            ret = self._maybe_promote(other)
+        else:
+            ret = self
+        ret._propagate_implicit_values()
+        return ret
+
+    def _replace_other(self, other, allow_promotions=False):
+        ''' Helper that should be called whenever "other" is merged into "self" with lower priority,
+            and we want to keep "self" as the resulting node (subject to promotions).
+
+            Intuitively speaking, it will selectively add content of "other" into "self" to make sure that
+            any extra information is preserved, while keeping the content already present in "self" as it is.
+
+            If "allow_promotions" is set to True, "other" can be returned instead of "self" if its type is preferred.
+            In such case, its content will be identical to the content of "self" after replacement has been done,
+            with any extra content coming from other's type preserved.
+        '''
+        if other._safe is not None:
+            self._safe = notnone_or(self._safe, True) and other._safe
+        if other._default_safe is not None:
+            self._default_safe = notnone_or(other._default_safe, True) and other._default_safe
+        self._metadata = { **other._metadata, **self._metadata }
+        if allow_promotions:
+            return self._maybe_promote(other)
+        return self
+
+    def _maybe_promote(self, other):
+        ''' Possibly promote "other" to be returned rather than "self" if its type is preferred.
+
+            This function >> DOES NOT << raise any errors related to types, i.e., it assumes all checks have already
+            been made and a correct merge is FINISHING, with the last step being promoting types, if needed. Consequently,
+            if promotion is not possible, the method WILL NOT REPORT any errors, instead will simply give up.
+
+            Argument convention is that "self" is about to replace "other" as the result of merging.
+
+            If "other" is promoted, it should replicate "self" as much as possible.
+        '''
+        if type(self) is type(other):
+            return self
+        if not self._is_composed() or not other._is_composed():
+            return self
+
+        if issubclass(type(other), type(self)): # simple case, plain dict/list replaces complex dict/list, promote complex
+            other.clear()
+            if isinstance(other, list):
+                other.extend(self)
+            else:
+                other.update(self)
+            other.__dict__.update(self.__dict__)
+            return other
+        elif issubclass(type(self), type(other)): # complex dict/list replaces simple dict/list, leave as is
+            return self
+        elif self._is_plain_composed() and not other._is_plain_composed():  # plain dict/list replaces complex list/dict, promote complex
+            other.clear()
+            if isinstance(other, list):
+                other.extend(self.values())
+            else:
+                other.update(enumerate(self))
+            other.__dict__.update(self.__dict__)
+            return other
+        elif not self._is_plain_composed() and other._is_plain_composed(): # complex dict/list replaces simple list/dict, leave as is
+            return self
+        else: # any other case, silently give up
+            return self
+
+    @classmethod
+    def _is_composed(cls):
+        return False
+
+    @classmethod
+    def _is_plain_composed(cls):
+        return False

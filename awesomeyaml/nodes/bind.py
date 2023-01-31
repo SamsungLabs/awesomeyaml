@@ -67,7 +67,7 @@ class BindNode(FunctionNode):
             ==================  ================================================================================================================================
             ``dict <- Bind``    behaves as ``dict <- !del dict``, unless delete is explicitly set to False
             ``None <- Bind``    ``Bind``
-            ``Bind1 <- Bind2``  ``Bind2`` if target entity changes, otherwise ``dict1 <- dict2``
+            ``Bind1 <- Bind2``  Update ``Bind1``'s target function with that of ``Bind2``, then update the arguments following the path for ``dict <- Bind``
             ``Bind <- dict``    Update ``Bind``'s arguments without changing target function
             ``Bind <- list``    Update ``Bind``'s arguments (analogical to ``dict <- list``) without changing target function
             ``Bind <- str``     if ``str`` is different than the current target function's name, update the name and remove all children, otherwise no effect
@@ -77,7 +77,7 @@ class BindNode(FunctionNode):
 
     @namespace('ayns')
     def on_evaluate_impl(self, path, ctx):
-        self.ayns._require_safe(path)
+        self._check_safe(path)
         _func = self._func
         if isinstance(_func, str):
             _func = import_name(_func)

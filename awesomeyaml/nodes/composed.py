@@ -19,43 +19,6 @@ from .node_path import NodePath
 
 
 class ComposedNode(ConfigNode):
-    def _get_child_kwargs(self, child=None):
-        ret = {}
-        if not hasattr(self, '_delete'): # happens when unpickling! children are being populated before attributes are set, but its ok since we assume pickled objects are ok anyway, so no need to fix things
-            return ret
-        ret['implicit_delete'] = notnone_or(self._delete, self._default_delete or self._implicit_delete)
-        ret['implicit_allow_new'] = notnone_or(self._allow_new, self._implicit_allow_new)
-        if child is None or getattr(child, '_implicit_safe') is not False: # do not set "implicit_safe" arg if the child exists and already has it set to False (note: I think it's not strictly necessary to handle it here since other checks would still prevent changes)
-            ret['implicit_safe'] = notnone_or(self._safe, self._implicit_safe)
-        return ret
-
-    def _propagate_implicit_values(self):
-        if not hasattr(self, '_delete'): # happens when unpickling! children are being populated before attributes are set, but its ok since we assume pickled objects are ok anyway, so no need to fix things
-            return
-        if self._implicit_delete is None and self._implicit_allow_new is None and self._implicit_safe is None:
-            return
-        if self._delete is not None and self._allow_new is not None and self._safe is not None:
-            return
-
-        for child in self._children.values():
-            fix = False
-            if self._delete is None:
-                if child._implicit_delete != self._implicit_delete:
-                    child._implicit_delete = self._implicit_delete
-                    fix = True
-            if self._allow_new is None:
-                if child._implicit_allow_new != self._implicit_allow_new:
-                    child._implicit_allow_new = self._implicit_allow_new
-                    fix = True
-            if self._safe is None:
-                if child._implicit_safe != self._implicit_safe:
-                    if child._implicit_safe is not False:
-                        child._implicit_safe = self._implicit_safe
-                        fix = True
-
-            if fix:
-                child._propagate_implicit_values()
-
     def __init__(self, children, nodes_memo=None, **kwargs):
         super().__init__(**kwargs)
         kwargs.pop('idx', None)
@@ -332,7 +295,8 @@ class ComposedNode(ConfigNode):
                 if not self._children and other.ayns.has_priority_over(self, if_equal=True):
                     removed.add(path)
                     other.ayns._require_all_new(path, f'note: the entire config tree under {path!r} has been removed due to node merging with a !del or !clear node', exceptions=removed)
-                    return other
+                    ret = other._replace_other(self, allow_promotions=True)
+                    return ret
 
             _this_path = NodePath.get_str_path(path)
             if not _this_path:
@@ -352,7 +316,6 @@ class ComposedNode(ConfigNode):
                             self.ayns.remove_child(key)
                         elif possibly_new_child is not child:
                             self.ayns.set_child(key, possibly_new_child)
-                            possibly_new_child._metadata = { **child._metadata, **possibly_new_child._metadata }
                     else:
                         if possibly_new_child is not child:
                             possibly_new_child.ayns._require_all_new(path + [key], f'last parent: {_this_path!r}, from file: {self.ayns.source_file!r}', include_self=False)
@@ -362,14 +325,11 @@ class ComposedNode(ConfigNode):
                                 self.ayns.set_child(key, possibly_new_child)
 
             if other.ayns.has_priority_over(self, if_equal=True):
-                self._priority = other._priority
-                self._delete = other._delete
-                self._implicit_delete = other._implicit_delete
-                self._metadata = { **self._metadata, **other._metadata }
+                ret = self._replace_self(other, allow_promotions=True)
             else:
-                self._metadata = { **other._metadata, **self._metadata }
+                ret = self._replace_other(other, allow_promotions=True)
 
-            return self
+            return ret
 
         @staticproperty
         @staticmethod
@@ -406,3 +366,50 @@ class ComposedNode(ConfigNode):
         elif isinstance(self, dict):
             dit = iter(self.items())
         return ComposedNode._recreate, (type(self), ), state, lit, dit
+
+    def _get_child_kwargs(self, child=None):
+        ret = {}
+        if not hasattr(self, '_delete'): # happens when unpickling! children are being populated before attributes are set, but its ok since we assume pickled objects are ok anyway, so no need to fix things
+            return ret
+        ret['implicit_delete'] = notnone_or(self._delete, self._default_delete or self._implicit_delete)
+        ret['implicit_allow_new'] = notnone_or(self._allow_new, self._implicit_allow_new)
+        if child is None or getattr(child, '_implicit_safe') is not False: # do not set "implicit_safe" arg if the child exists and already has it set to False (note: I think it's not strictly necessary to handle it here since other checks would still prevent changes)
+            ret['implicit_safe'] = notnone_or(self._safe, self._implicit_safe)
+        return ret
+
+    def _propagate_implicit_values(self):
+        if not hasattr(self, '_delete'): # happens when unpickling! children are being populated before attributes are set, but its ok since we assume pickled objects are ok anyway, so no need to fix things
+            return
+        if self._implicit_delete is None and self._implicit_allow_new is None and self._implicit_safe is None:
+            return
+        if self._delete is not None and self._allow_new is not None and self._safe is not None:
+            return
+
+        for child in self._children.values():
+            fix = False
+            if self._delete is None:
+                if child._implicit_delete != self._implicit_delete:
+                    child._implicit_delete = self._implicit_delete
+                    fix = True
+            if self._allow_new is None:
+                if child._implicit_allow_new != self._implicit_allow_new:
+                    child._implicit_allow_new = self._implicit_allow_new
+                    fix = True
+            if self._safe is None:
+                if child._implicit_safe != self._implicit_safe:
+                    if child._implicit_safe is not False:
+                        child._implicit_safe = self._implicit_safe
+                        fix = True
+
+            if fix:
+                child._propagate_implicit_values()
+
+    @classmethod
+    def _is_composed(cls):
+        return True
+
+    @classmethod
+    def _is_plain_composed(cls):
+        from .dict import ConfigDict
+        from .list import ConfigList
+        return cls in [ConfigList, ConfigDict]
