@@ -1,0 +1,11 @@
+---
+f: !eval |
+    def foo(x):
+        return x**2
+
+    ret = [foo(x) for x in range(3)]
+    ret
+
+
+###EXPECTED
+f: [0,1,4]

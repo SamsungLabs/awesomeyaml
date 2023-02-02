@@ -1,0 +1,13 @@
+---
+f: !eval |
+    def foo(x):
+        return x**2
+
+    ret = []
+    for x in range(3):
+        ret.append(foo(x))
+    ret
+
+
+###EXPECTED
+f: [0,1,4]
