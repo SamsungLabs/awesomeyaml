@@ -15,7 +15,7 @@
 from .scalar import ConfigScalar
 from .node import ConfigNode
 from ..namespace import namespace, staticproperty
-from ..utils import Bunch
+from ..utils import Bunch, python_is_at_least
 from ..errors import EvalError
 
 import os
@@ -115,10 +115,10 @@ class EvalNode(ConfigScalar(str)):
         try:
             exec_code = compile(exec_lines, self._source_file, 'exec')
             eval_code = compile(eval_line, self._source_file, 'eval')
-            exec_code, _ = EvalNode._patch_access_to_globals(exec_code)
-            eval_code, _ = EvalNode._patch_access_to_globals(eval_code)
-            exec(exec_code, gbls)
-            ret = eval(eval_code, gbls)
+            exec_code_patched, _ = EvalNode._patch_access_to_globals(exec_code)
+            eval_code_patched, _ = EvalNode._patch_access_to_globals(eval_code)
+            exec(exec_code_patched, gbls)
+            ret = eval(eval_code_patched, gbls)
         except EvalError as e:
             code = f'=== CODE BEGINS ===\n{os.linesep.join(lines)}\n=== CODE ENDS ==='
             if e.node is self:
@@ -186,17 +186,41 @@ class EvalNode(ConfigScalar(str)):
         ajumps = []
         location_map = {}
 
-        for i in range(0, len(code.co_code), 2):
+        i = 0
+        while i < len(code.co_code):
             done = False
             op = code.co_code[i]
             if dis.opname[op] in ['LOAD_GLOBAL', 'LOAD_NAME']:
                 arg = code.co_code[i+1]
+                arg_shifted = (python_is_at_least(3, 11) and dis.opname[op] == 'LOAD_GLOBAL')
+
+                if arg_shifted:
+                    null_bit = arg & 0x01
+                    arg = arg>>1
+
                 name = code.co_names[arg]
+
                 if name not in ['__ayns_globals_wrapper', 'ayns']:
                     new_arg = get_wrapper_index()
+                    if arg_shifted:
+                        new_arg = (new_arg << 1) | null_bit
+
                     location_map[i//2] = len(new_bytecode)
                     new_bytecode.append(code.co_code[i:i+1] + new_arg.to_bytes(1, 'little'))
+                    if python_is_at_least(3, 11):
+                        caches = dis._inline_cache_entries[op]
+                        for _ in range(caches):
+                            assert i+2 < len(code.co_code)
+                            assert code.co_code[i+2] == 0
+                            new_bytecode.append(code.co_code[i+2:i+4])
+                            i += 2
+
                     new_bytecode.append(dis.opmap['LOAD_ATTR'].to_bytes(1, 'little') + arg.to_bytes(1, 'little'))
+                    if python_is_at_least(3, 11):
+                        caches = dis._inline_cache_entries[dis.opmap['LOAD_ATTR']]
+                        for _ in range(caches):
+                            new_bytecode.append(b'\x00\x00') # CACHE(0)
+
                     done_something = True
                     done = True
             elif op in dis.hasjabs:
@@ -208,6 +232,8 @@ class EvalNode(ConfigScalar(str)):
                 location_map[i//2] = len(new_bytecode)
                 new_bytecode.append(code.co_code[i:i+2])
 
+            i += 2
+
         if not done_something:
             return code, False
 
@@ -218,33 +244,87 @@ class EvalNode(ConfigScalar(str)):
             old_jump_loc = rlocation_map[new_jump_loc]
 
             op, old_loc_rel = new_bytecode[rjump]
-            old_loc_abs = old_loc_rel + old_jump_loc
+            is_backward = False
+            if python_is_at_least(3, 11) and 'BACKWARD' in dis.opname[op]:
+                is_backward = True
+
+            if not python_is_at_least(3, 10): # python 3.10 starts counting instructions (each 2-bytes long), before that it was counting bytes
+                # in this code the convention is to count instructions (e.g., because of the way "new_bytecode" is organized), so translate
+                # offset from bytes to instructions
+                old_loc_rel //= 2
+
+            if is_backward:
+                old_loc_abs = old_jump_loc - old_loc_rel
+            else:
+                old_loc_abs = old_loc_rel + old_jump_loc
 
             new_loc_abs = location_map[old_loc_abs]
-            new_loc_rel = new_loc_abs - new_jump_loc
+            new_loc_rel = abs(new_loc_abs - new_jump_loc)
+            if not python_is_at_least(3, 10):
+                new_loc_rel *= 2
 
             new_bytecode[rjump] = op.to_bytes(1, 'little') + new_loc_rel.to_bytes(1, 'little')
 
         for ajump in ajumps:
             op, old_loc_abs = new_bytecode[ajump]
+            if not python_is_at_least(3, 10):
+                old_loc_abs //= 2
             new_loc_abs = location_map[old_loc_abs]
+            if not python_is_at_least(3, 10):
+                new_loc_abs *= 2
             new_bytecode[ajump] = op.to_bytes(1, 'little') + new_loc_abs.to_bytes(1, 'little')
 
 
         new_bytecode = b''.join(new_bytecode)
-        return types.CodeType(code.co_argcount,
-                                code.co_posonlyargcount,
-                                code.co_kwonlyargcount,
-                                code.co_nlocals,
-                                code.co_stacksize,
-                                code.co_flags,
-                                new_bytecode,
-                                tuple(new_consts),
-                                tuple(new_names),
-                                code.co_varnames,
-                                code.co_filename,
-                                code.co_name,
-                                code.co_firstlineno,
-                                code.co_lnotab,
-                                code.co_freevars,
-                                code.co_cellvars), True
+        if python_is_at_least(3, 11):
+            return types.CodeType(code.co_argcount,
+                                    code.co_posonlyargcount, # only in Python >= 3.8
+                                    code.co_kwonlyargcount,
+                                    code.co_nlocals,
+                                    code.co_stacksize,
+                                    code.co_flags,
+                                    new_bytecode,
+                                    tuple(new_consts),
+                                    tuple(new_names),
+                                    code.co_varnames,
+                                    code.co_filename,
+                                    code.co_name,
+                                    code.co_qualname, # only in Python >= 3.11
+                                    code.co_firstlineno,
+                                    code.co_lnotab,
+                                    code.co_exceptiontable, # only in Python >= 3.11
+                                    code.co_freevars,
+                                    code.co_cellvars), True
+        elif python_is_at_least(3, 8):
+            return types.CodeType(code.co_argcount,
+                                    code.co_posonlyargcount, # only in Python >= 3.8
+                                    code.co_kwonlyargcount,
+                                    code.co_nlocals,
+                                    code.co_stacksize,
+                                    code.co_flags,
+                                    new_bytecode,
+                                    tuple(new_consts),
+                                    tuple(new_names),
+                                    code.co_varnames,
+                                    code.co_filename,
+                                    code.co_name,
+                                    code.co_firstlineno,
+                                    code.co_lnotab,
+                                    code.co_freevars,
+                                    code.co_cellvars), True
+        else:
+            return types.CodeType(code.co_argcount,
+                                    code.co_kwonlyargcount,
+                                    code.co_nlocals,
+                                    code.co_stacksize,
+                                    code.co_flags,
+                                    new_bytecode,
+                                    tuple(new_consts),
+                                    tuple(new_names),
+                                    code.co_varnames,
+                                    code.co_filename,
+                                    code.co_name,
+                                    code.co_firstlineno,
+                                    code.co_lnotab,
+                                    code.co_freevars,
+                                    code.co_cellvars), True
