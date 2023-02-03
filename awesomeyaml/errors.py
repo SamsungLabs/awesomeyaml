@@ -46,7 +46,8 @@ def api_entry(fn):
                 error_msg=e.error_msg,
                 node=e.node,
                 path=e.path,
-                extra_node=e.extra_node
+                extra_node=e.extra_node,
+                note=e.note
             ) from reason
         finally:
             _api_entered.value = False
@@ -63,7 +64,7 @@ def _get_mark_or_fallback_str(aynode):
 
 
 class Error(yaml.error.MarkedYAMLError):
-    def __init__(self, error_msg, node, path=None, extra_node=None):
+    def __init__(self, error_msg, node, path=None, extra_node=None, note=None):
         self.error_msg = error_msg
         self.node = node
         self.path = path
@@ -100,13 +101,15 @@ class Error(yaml.error.MarkedYAMLError):
 
             super().__init__(
                 problem=msg,
-                problem_mark=mark
+                problem_mark=mark,
+                note=note
             )
         else:
             super().__init__(
                 context=msg,
                 context_mark=_get_mark_or_fallback_str(self.node),
-                problem_mark=_get_mark_or_fallback_str(self.extra_node)
+                problem_mark=_get_mark_or_fallback_str(self.extra_node),
+                note=note
             )
 
 
