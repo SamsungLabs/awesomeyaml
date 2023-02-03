@@ -142,14 +142,3 @@ class FunctionNode(ConfigDict):
             kw_positional_args[idx_to_name[idx]] = value
 
         return unpack, kw_positional_args, keyword_args
-
-    def _check_safe(self, path):
-        self.ayns._require_safe(path)
-
-        unsafe_args = []
-        for p, arg in self.ayns.nodes_with_paths(prefix=path):
-            if not arg.ayns.safe:
-                unsafe_args.append(p)
-
-        if unsafe_args:
-            raise ValueError(f'Avoiding execution of the {self.ayns.tag!r} node under path {path!r} since the following arguments are "!unsafe":\n    {unsafe_args}')

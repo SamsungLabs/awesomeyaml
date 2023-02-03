@@ -399,7 +399,7 @@ class ConfigNode(metaclass=ConfigNodeMeta):
 
         def _require_safe(self, path):
             if not self.ayns.safe:
-                raise ValueError(f'The node {path!r} comes from a source marked as "!unsafe", avoiding execution')
+                raise errors.UnsafeError(None, self, path)
 
     def _propagate_implicit_values(self):
         return

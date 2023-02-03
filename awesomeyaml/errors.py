@@ -136,6 +136,10 @@ class EvalError(Error):
     base_msg = 'An error occurred while evaluating a {} node under path: {}'
 
 
+class UnsafeError(EvalError):
+    base_msg = 'Avoiding execution of an !unsafe {} node under path: {}'
+
+
 @contextlib.contextmanager
 def rethrow(error_type, self, path, other):
     try:

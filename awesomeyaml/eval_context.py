@@ -20,6 +20,7 @@ from . import errors
 from . import utils
 
 import copy
+import contextlib
 
 
 class EvalContext(metaclass=NamespaceableMeta):
@@ -86,6 +87,20 @@ class EvalContext(metaclass=NamespaceableMeta):
         if eval_symbols:
             self._eval_symbols.update(eval_symbols)
 
+        self._require_all_safe = False
+        self._eval_stack = []
+
+    @contextlib.contextmanager
+    def require_all_safe(self, node, path):
+        old, self._require_all_safe = self._require_all_safe, True
+        sp = len(self._eval_stack)-1
+        try:
+            yield
+        except errors.UnsafeError as e:
+            raise errors.EvalError(f'The node requires all dependencies to be safe but the above error was raised indicating at least one !unsafe node was attempted to be executed while following the chain of dependencies: {self._eval_stack[sp:]}', node, path) from e
+        finally:
+            self._require_all_safe = old
+
     def get_node(self, *path, **kwargs):
         path = NodePath.get_list_path(*path)
         if str(path) in self._eval_cache:
@@ -104,10 +119,16 @@ class EvalContext(metaclass=NamespaceableMeta):
     def evaluate_node(self, cfgobj, prefix=None):
         if not isinstance(cfgobj, ConfigNode):
             return cfgobj
+
+        self._eval_stack.append(prefix)
+        prefix = NodePath.get_list_path(prefix, check_types=False) or NodePath()
+
+        if self._require_all_safe:
+            if not cfgobj.ayns.safe:
+                raise errors.UnsafeError(f'Note: the current context requires all evaluated nodes to be safe - see chained exceptions for more information', cfgobj, str(prefix))
+
         if id(cfgobj) in self._eval_cache_id:
             return self._eval_cache_id[id(cfgobj)]
-
-        prefix = NodePath.get_list_path(prefix, check_types=False) or NodePath()
 
         evaluated_parent = None
         if prefix:
@@ -124,6 +145,7 @@ class EvalContext(metaclass=NamespaceableMeta):
 
         self._eval_cache[str(prefix)] = evaluated_cfgobj
         self._eval_cache_id[utils.persistent_id(cfgobj)] = evaluated_cfgobj
+        self._eval_stack.pop()
         return evaluated_cfgobj
 
     @errors.api_entry
