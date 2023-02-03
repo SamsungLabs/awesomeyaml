@@ -9,4 +9,4 @@ f: !notnew
 
 ###ERROR
 MergeError
-.*Node 'f.dar' .*
+Node 'f.dar'

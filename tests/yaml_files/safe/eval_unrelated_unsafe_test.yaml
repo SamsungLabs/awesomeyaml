@@ -1,0 +1,14 @@
+---
+foo: !eval |
+    def foo(x):
+        return x*2
+
+    foo(dar)
+---
+bar: !unsafe 2
+dar: 12
+
+###EXPECTED
+foo: 24
+bar: 2
+dar: 12

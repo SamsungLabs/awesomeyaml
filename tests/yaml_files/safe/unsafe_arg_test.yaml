@@ -4,5 +4,5 @@ f: !call:tests.utils.malicious {}
 f: !unsafe [0]
 
 ###ERROR
-EvalError
-.*The node 'f' comes from a source marked as "!unsafe".*
+UnsafeError
+Avoiding execution of an !unsafe .* node under path: 'f'

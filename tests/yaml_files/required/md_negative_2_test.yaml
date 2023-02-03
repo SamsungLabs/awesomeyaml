@@ -3,4 +3,4 @@ f: !required{{ 'foo': 'bar' }} null
 
 ###ERROR
 awesomeyaml.errors.ParsingError
-!required does not expect any arguments, but got: .*
+!required does not expect any arguments, but got:

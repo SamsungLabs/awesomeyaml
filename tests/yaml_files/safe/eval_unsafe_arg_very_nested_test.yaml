@@ -1,0 +1,16 @@
+---
+foo: !eval |
+    a = 2
+    def foo(x):
+        def bar(x):
+            return x+car
+        return bar(x)**a
+
+    foo(dar)
+---
+car: !unsafe 2
+dar: 12
+
+###ERROR
+UnsafeError
+Avoiding execution of an !unsafe .* node under path: 'car'

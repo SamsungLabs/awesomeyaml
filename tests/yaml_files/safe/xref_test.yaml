@@ -1,0 +1,10 @@
+---
+f: !xref bar
+---
+!unsafe
+bar: 12
+
+
+###EXPECTED
+f: 12
+bar: 12

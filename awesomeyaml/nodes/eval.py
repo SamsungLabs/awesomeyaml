@@ -16,29 +16,34 @@ from .scalar import ConfigScalar
 from .node import ConfigNode
 from ..namespace import namespace, staticproperty
 from ..utils import Bunch
+from ..errors import EvalError
 
 import os
+import dis
 import sys
 import types
 import hashlib
 
 
-class EnsureSafeArg():
-    def __init__(self, ecfg_obj):
-        self.ecfg_obj = ecfg_obj
-
-    def __getitem__(self, key):
-        if key not in self:
-            node = self._cfgobj[key]
-            return self._eval_ctx.evaluate_node(node, self._path + [key])
-
-        return super().__getitem__(key)
+class GlobalsWrapper():
+    def __init__(self, gbls, ecfg, ctx, node, path):
+        self.gbls = gbls
+        self.ecfg = ecfg
+        self.ctx = ctx
+        self.node = node
+        self.path = path
 
     def __getattr__(self, name):
-        #if name not in self:
-        #    raise AttributeError(f'Object {type(self).__name__!r} does not have attribute {name!r}')
-        return self[name]
+        if name in self.gbls:
+            return self.gbls[name]
 
+        if name in self.ecfg._cfgobj:
+            with self.ctx.require_all_safe(self.node, self.path):
+                return self.ecfg[name]
+        elif name in __builtins__:
+            return __builtins__[name]
+        else:
+            raise NameError(name)
 
 class EvalNode(ConfigScalar(str)):
     ''' Implements ``!eval`` tag.
@@ -73,6 +78,7 @@ class EvalNode(ConfigScalar(str)):
             The same as standard string node.
     '''
     _top_namespace_module_name = 'awesomeyaml.eval_node_namespace'
+    _globals_wrapper_name = '__ayns_globals_wrapper'
 
     def __init__(self, value, persistent_namespace=True, **kwargs):
         super().__init__(value, **kwargs)
@@ -84,26 +90,49 @@ class EvalNode(ConfigScalar(str)):
         code_hash = hashlib.md5(str(self).encode('utf-8')).hexdigest()
         eval_module_name = f'{EvalNode._top_namespace_module_name}.{str(path).replace(".", "_")}_0x{code_hash}'
 
-        lcls = ctx.ecfg
-        gbls = {
-            'ayns': Bunch({
-                'ctx': ctx,
-                'cfg': lcls
-            })
-        }
-        gbls.update(ctx.get_eval_symbols())
-        gbls.update({ '__name__': eval_module_name, '__file__': self._source_file })
+        from_module = False
+        if self.persistent_namespace and eval_module_name in sys.modules:
+            gbls = sys.modules[eval_module_name].__dict__
+            from_module = True
+        else:
+            gbls = {
+                'ayns': Bunch({
+                    'ctx': ctx,
+                    'cfg': ctx.ecfg
+                })
+            }
+            gbls.update(ctx.get_eval_symbols())
+            gbls.update({ '__name__': eval_module_name, '__file__': self._source_file })
+
+        gbls[EvalNode._globals_wrapper_name] = GlobalsWrapper(gbls, ctx.ecfg, ctx, self, path)
 
         lines = self.strip().split('\n')
         lines = [lline for line in lines for lline in line.split(';')]
-        try:
-            exec("\n".join(lines[:-1]), gbls, lcls)
-            ret = eval(lines[-1].strip(), gbls, lcls)
-        except:
-            et, e, _ = sys.exc_info()
-            raise RuntimeError(f'Exception occurred.\n\nCode:\n{os.linesep.join(lines)}\n\nError:\n{et.__name__}: {e}') from None
 
-        if len(lines) > 1 and self.persistent_namespace:
+        exec_lines = "\n".join(lines[:-1])
+        eval_line = lines[-1].strip()
+
+        try:
+            exec_code = compile(exec_lines, self._source_file, 'exec')
+            eval_code = compile(eval_line, self._source_file, 'eval')
+            exec_code, _ = EvalNode._patch_access_to_globals(exec_code)
+            eval_code, _ = EvalNode._patch_access_to_globals(eval_code)
+            exec(exec_code, gbls)
+            ret = eval(eval_code, gbls)
+        except EvalError as e:
+            code = f'=== CODE BEGINS ===\n{os.linesep.join(lines)}\n=== CODE ENDS ==='
+            if e.node is self:
+                e.note = code
+                raise
+            else:
+                raise EvalError('The above exception occurred in the user code.', self, path, note=code) from e
+        except Exception as e:
+            code = f'=== CODE BEGINS ===\n{os.linesep.join(lines)}\n=== CODE ENDS ==='
+            raise EvalError('The above exception occurred in the user code.', self, path, note=code) from e
+
+        del gbls[EvalNode._globals_wrapper_name]
+
+        if len(lines) > 1 and self.persistent_namespace and not from_module:
             eval_node_module = types.ModuleType(eval_module_name, 'Dynamic module to evaluate awesomeyaml !eval node')
             eval_node_module.__dict__.update(gbls)
             sys.modules[eval_module_name] = eval_node_module
@@ -118,3 +147,104 @@ class EvalNode(ConfigScalar(str)):
     @staticmethod
     def tag():
         return '!eval'
+
+
+    @staticmethod
+    def _patch_access_to_globals(code):
+        done_something = False
+
+        def maybe_patch(const):
+            if isinstance(const, types.CodeType):
+                nonlocal done_something
+                new_const, done_something_sub = EvalNode._patch_access_to_globals(const)
+                if done_something_sub:
+                    done_something = True
+                return new_const
+
+            return const
+
+        new_consts = [maybe_patch(const) for const in code.co_consts]
+        new_names = list(code.co_names)
+        has_wrapper = bool(EvalNode._globals_wrapper_name in new_names)
+
+        _wrapper_idx = None
+        def get_wrapper_index():
+            nonlocal _wrapper_idx
+            if _wrapper_idx is None:
+                if has_wrapper:
+                    _wrapper_idx = new_names.index(EvalNode._globals_wrapper_name)
+                else:
+                    new_names.append(EvalNode._globals_wrapper_name)
+                    _wrapper_idx = len(new_names) - 1
+
+            assert _wrapper_idx is not None
+            return _wrapper_idx
+
+
+        new_bytecode = []
+        rjumps = []
+        ajumps = []
+        location_map = {}
+
+        for i in range(0, len(code.co_code), 2):
+            done = False
+            op = code.co_code[i]
+            if dis.opname[op] in ['LOAD_GLOBAL', 'LOAD_NAME']:
+                arg = code.co_code[i+1]
+                name = code.co_names[arg]
+                if name not in ['__ayns_globals_wrapper', 'ayns']:
+                    new_arg = get_wrapper_index()
+                    location_map[i//2] = len(new_bytecode)
+                    new_bytecode.append(code.co_code[i:i+1] + new_arg.to_bytes(1, 'little'))
+                    new_bytecode.append(dis.opmap['LOAD_ATTR'].to_bytes(1, 'little') + arg.to_bytes(1, 'little'))
+                    done_something = True
+                    done = True
+            elif op in dis.hasjabs:
+                ajumps.append(len(new_bytecode))
+            elif op in dis.hasjrel:
+                rjumps.append(len(new_bytecode))
+
+            if not done:
+                location_map[i//2] = len(new_bytecode)
+                new_bytecode.append(code.co_code[i:i+2])
+
+        if not done_something:
+            return code, False
+
+        rlocation_map = { value: key for key, value in location_map.items() }
+
+        for rjump in rjumps:
+            new_jump_loc = rjump
+            old_jump_loc = rlocation_map[new_jump_loc]
+
+            op, old_loc_rel = new_bytecode[rjump]
+            old_loc_abs = old_loc_rel + old_jump_loc
+
+            new_loc_abs = location_map[old_loc_abs]
+            new_loc_rel = new_loc_abs - new_jump_loc
+
+            new_bytecode[rjump] = op.to_bytes(1, 'little') + new_loc_rel.to_bytes(1, 'little')
+
+        for ajump in ajumps:
+            op, old_loc_abs = new_bytecode[ajump]
+            new_loc_abs = location_map[old_loc_abs]
+            new_bytecode[ajump] = op.to_bytes(1, 'little') + new_loc_abs.to_bytes(1, 'little')
+
+
+        new_bytecode = b''.join(new_bytecode)
+        return types.CodeType(code.co_argcount,
+                                code.co_posonlyargcount,
+                                code.co_kwonlyargcount,
+                                code.co_nlocals,
+                                code.co_stacksize,
+                                code.co_flags,
+                                new_bytecode,
+                                tuple(new_consts),
+                                tuple(new_names),
+                                code.co_varnames,
+                                code.co_filename,
+                                code.co_name,
+                                code.co_firstlineno,
+                                code.co_lnotab,
+                                code.co_freevars,
+                                code.co_cellvars), True

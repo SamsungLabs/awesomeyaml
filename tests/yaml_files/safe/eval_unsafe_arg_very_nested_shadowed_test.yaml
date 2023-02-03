@@ -1,0 +1,18 @@
+---
+foo: !eval |
+    a = 2
+    car = 2
+    def foo(x):
+        def bar(x):
+            return x+car
+        return bar(x)**a
+
+    foo(dar)
+---
+car: !unsafe 2
+dar: 12
+
+###EXPECTED
+foo: 196
+car: 2
+dar: 12

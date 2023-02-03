@@ -9,4 +9,4 @@ f: !notnew
 
 ###ERROR
 MergeError
-.*Node 'f.car\[2\]' .*
+Node 'f.car\[2\]'

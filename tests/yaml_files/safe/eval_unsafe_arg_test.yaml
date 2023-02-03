@@ -1,0 +1,12 @@
+---
+foo: !eval |
+    def foo(x):
+        return x*2
+
+    foo(bar)
+---
+bar: !unsafe 2
+
+###ERROR
+UnsafeError
+Avoiding execution of an !unsafe .* node under path: 'bar'

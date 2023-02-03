@@ -40,7 +40,7 @@ def dummy(*args, **kwargs):
 
 
 def malicious(*args, **kwargs):
-    raise RuntimeError('Malicious function called!')
+    raise RuntimeError(f'Malicious function called! Args: {args}, {kwargs}')
 
 
 class persistent_id(int):

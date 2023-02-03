@@ -1,0 +1,10 @@
+---
+fn: !call:tests.utils.malicious
+    f: !xref bar
+---
+bar: !unsafe 12
+
+
+###ERROR
+UnsafeError
+Avoiding execution of an !unsafe .* node under path: 'bar'

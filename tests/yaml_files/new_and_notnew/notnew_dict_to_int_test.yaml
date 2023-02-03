@@ -11,4 +11,4 @@ foo:
 
 ###ERROR
 MergeError
-.*Node 'foo.test' .*
+Node 'foo.test'
