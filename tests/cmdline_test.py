@@ -14,7 +14,7 @@
 
 import unittest
 
-from .utils import setUpModule
+from .utils import setUpModule, AssertRaisesChainedContext
 from awesomeyaml.config import Config
 from awesomeyaml.errors import MergeError
 
@@ -45,7 +45,7 @@ class CmdlineTest(unittest.TestCase):
         self.assertEqual(cfg.fooo, 1)
 
     def test_missing_nested(self):
-        with self.assertRaisesRegex(MergeError, r"An error occurred while merging .* nodes under path: 'foo.bar'.*"):
+        with AssertRaisesChainedContext(MergeError, self, r"An error occurred while merging .* nodes under path: 'foo.bar'.*"):
             _ = Config.build_from_cmdline("{ foo: { bar: [1, 2] }}", "foo.bar[2]=3")
 
 

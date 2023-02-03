@@ -141,7 +141,7 @@ class ConfigList(ComposedNode, list):
                     if first_missing is None:
                         first_missing = key
             if _missing_keys:
-                raise MergeError(f'merging a dict into a list requires all dict nodes to map to the existing indices in the list but the following keys are invalid: {_missing_keys}', self, first_missing, prefix)
+                raise MergeError(f'merging a dict into a list requires all dict nodes to map to the existing indices in the list but the following keys are invalid: {_missing_keys}', node=self, path=prefix, extra_node=first_missing)
 
         def keep_if_exists(path, node):
             if not node.ayns.delete:
