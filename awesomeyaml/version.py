@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version = '1.0.2'
+version = '1.1.0'
 repo = 'unknown'
 commit = 'unknown'
 has_repo = False
