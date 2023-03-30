@@ -48,6 +48,13 @@ class CmdlineTest(unittest.TestCase):
         with AssertRaisesChainedContext(MergeError, self, r"An error occurred while merging .* nodes under path: 'foo.bar'.*"):
             _ = Config.build_from_cmdline("{ foo: { bar: [1, 2] }}", "foo.bar[2]=3")
 
+    def test_equal_mark_in_block(self):
+        cfg = Config.build_from_cmdline("""
+        foo:
+            - test=1
+        """)
+        self.assertEqual(cfg.foo[0], 'test=1')
+
 
 
 if __name__ == '__main__':

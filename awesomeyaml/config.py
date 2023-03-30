@@ -68,13 +68,22 @@ class Config(Bunch, metaclass=NamespaceableMeta):
         filenames = []
         raw_yamls = []
 
-        def append(idx, option):
+        def determine_option_type(option):
             option = option.strip()
-            if (option.startswith('{') and option.endswith('}')) or (('\n' in option or ':' in option) and '=' not in option):
-                yaml = option
-                filename = f'<Commandline argument #{idx}>'
-                raw_yaml = True
-            elif '=' in option:
+            if '\n' in option or (option.startswith('{') and option.endswith('}')):
+                return 'raw'
+
+            if '=' in option:
+                return 'inline'
+
+            return 'file'
+
+
+        def append(idx, option):
+            opt_type = determine_option_type(option)
+            assert opt_type in ['inline', 'raw', 'file'], f'Unexpected option type deduced: {opt_type}'
+
+            if opt_type == 'inline':
                 key, value = [o.strip() for o in option.split('=', maxsplit=1)]
                 yaml = '{ '
                 if key[0] != '!' and default_inline_tag:
@@ -106,12 +115,18 @@ class Config(Bunch, metaclass=NamespaceableMeta):
 
                 filename = f'<Commandline argument #{idx}>'
                 raw_yaml = True
-            else:
+            elif opt_type == 'raw':
                 yaml = option
+                filename = f'<Commandline argument #{idx}>'
+                raw_yaml = True
+            elif opt_type == 'file':
+                yaml = option.strip()
                 if filename_lookup_fn is not None:
                     yaml = filename_lookup_fn(yaml)
                 filename = yaml
                 raw_yaml = False
+            else:
+                raise RuntimeError(f'Unexpected deduced option type: {opt_type}')
 
             yamls.append(yaml)
             filenames.append(filename)
