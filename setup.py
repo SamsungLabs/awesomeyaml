@@ -23,10 +23,11 @@ from pathlib import Path
 
 package_name = 'awesomeyaml'
 description = 'Config-building utilities using YAML'
-author = 'Łukasz Dudziak',
-author_email = 'l.dudziak@samsung.com',
-url = 'https://github.com/SamsungLabs/awesomeyaml',
-download_url = 'https://github.com/SamsungLabs/awesomeyaml',
+author = 'Łukasz Dudziak'
+author_email = 'l.dudziak@samsung.com'
+url = 'https://github.com/SamsungLabs/awesomeyaml'
+download_url = 'https://github.com/SamsungLabs/awesomeyaml'
+data_files = {}
 
 version_file = Path(__file__).parent.joinpath(package_name, 'version.py')
 spec = importlib.util.spec_from_file_location('{}.version'.format(package_name), version_file)
@@ -35,13 +36,16 @@ spec.loader.exec_module(package_version)
 
 long_desc = None
 long_desc_type = None
-data_files = []
 readme_md = Path(__file__).parent.joinpath('README.md')
 if readme_md.exists():
-    data_files.append(('.', [str(readme_md.name)]))
+    data_files.setdefault('.', []).append(readme_md.name)
     with readme_md.open('r') as f:
         long_desc = f.read()
         long_desc_type = 'text/markdown'
+
+license = Path(__file__).parent.joinpath('LICENSE')
+if license.exists():
+    data_files.setdefault('.', []).append(license.name)
 
 
 class build_maybe_inplace(build_py):
@@ -82,7 +86,7 @@ setup(name=package_name,
           'pyyaml >= 5.1'
       ],
       packages=find_packages(where='.', exclude=['tests']),
-      data_files=data_files,
+      data_files=list(data_files.items()),
       package_dir={ '': '.' },
       cmdclass={
           'build_py': build_maybe_inplace,

@@ -44,11 +44,17 @@ except ImportError:
     pass
 
 try:
-    from . import _dist_info as _info
-    assert not has_repo, '_dist_info should not exist when repo is in place'
-    assert version == _info.version
-    repo = _info.repo
-    commit = _info.commit
+    import importlib
+    from pathlib import Path
+    _dist_info_file = Path(__file__).parent.joinpath('_dist_info.py')
+    if _dist_info_file.exists():
+        _spec = importlib.util.spec_from_file_location('_dist_info', _dist_info_file)
+        _dist_info = importlib.util.module_from_spec(_spec)
+        _spec.loader.exec_module(_dist_info)
+        assert not has_repo, '_dist_info should not exist when repo is in place'
+        assert version == _dist_info.version
+        repo = _dist_info.repo
+        commit = _dist_info.commit
 except (ImportError, SystemError):
     pass
 
