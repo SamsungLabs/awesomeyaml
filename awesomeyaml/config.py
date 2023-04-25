@@ -21,12 +21,13 @@ from .namespace import namespace, NamespaceableMeta
 from .utils import Bunch
 from .nodes.required import RequiredNode
 from . import errors
+from . import yaml
 
 
 class Config(Bunch, metaclass=NamespaceableMeta):
     ''' A class representing parsed and evaluated config dictionary.
     '''
-    def __init__(self, config_dict=None):
+    def __init__(self, config_dict=None, eval_ctx=None):
         ''' Arguments:
                 config_dict : `dict` or unevaluated `awesomeyaml.nodes.ConfigDict`, `None`
                     represents an empty dict.
@@ -41,8 +42,10 @@ class Config(Bunch, metaclass=NamespaceableMeta):
             Config.check_missing(config_dict)
             self._source = config_dict
             pre_evaluate = copy.deepcopy(config_dict)
-            eval_ctx = EvalContext(pre_evaluate)
-            evaluated = eval_ctx.evaluate()
+            if eval_ctx is None:
+                eval_ctx = EvalContext()
+            evaluated = eval_ctx.evaluate(pre_evaluate)
+            self._user_data = eval_ctx.user_data
         else:
             evaluated = {}
 
@@ -50,7 +53,7 @@ class Config(Bunch, metaclass=NamespaceableMeta):
 
     @classmethod
     @errors.api_entry
-    def build(cls, *sources, raw_yaml=None, filename=None):
+    def build(cls, *sources, raw_yaml=None, filename=None, eval_ctx=None):
         ''' Builds a config from the provided yaml sources and evaluates it, returning `awesomeyaml.Config` object.
 
             Arguments:
@@ -60,7 +63,7 @@ class Config(Bunch, metaclass=NamespaceableMeta):
         from .builder import Builder
         b = Builder()
         b.add_multiple_sources(*sources, raw_yaml=raw_yaml, filename=filename)
-        return Config(b.build())
+        return Config(b.build(), eval_ctx=eval_ctx)
 
     @classmethod
     def process_cmdline(cls, args, filename_lookup_fn=None, default_inline_tag='!notnew'):
@@ -138,9 +141,9 @@ class Config(Bunch, metaclass=NamespaceableMeta):
         return yamls, filenames, raw_yamls
 
     @classmethod
-    def build_from_cmdline(cls, *sources, filename_lookup_fn=None):
+    def build_from_cmdline(cls, *sources, filename_lookup_fn=None, eval_ctx=None):
         yamls, filenames, raw_yamls = cls.process_cmdline(sources, filename_lookup_fn=filename_lookup_fn)
-        return cls.build(*yamls, raw_yaml=raw_yamls, filename=filenames)
+        return cls.build(*yamls, raw_yaml=raw_yamls, filename=filenames, eval_ctx=eval_ctx)
 
     @staticmethod
     def check_missing(cfg):
@@ -159,6 +162,22 @@ class Config(Bunch, metaclass=NamespaceableMeta):
             this `awesomeyaml.Config`.
         '''
         return self._source
+
+    @namespace('ayns')
+    @property
+    def user_data(self):
+        ''' The user data of the `awesomeyaml.EvalContext` object used to construct this `Config`.
+        '''
+        return self._user_data
+
+    @namespace('ayns')
+    def get_node(self, *path):
+        from .nodes.composed import NodePath
+        path = NodePath.get_list_path(*path)
+        ret = self
+        for component in path:
+            ret = ret[component]
+        return ret
 
     @namespace('ayns')
     def pprint(self, ind=2, init_level=0):
@@ -306,3 +325,11 @@ class Config(Bunch, metaclass=NamespaceableMeta):
 
         ret += line
         return ret
+
+
+def config_representer(dumper, value):
+    return dumper.represent_data(dict(value))
+
+
+yaml.yaml.add_representer(Config, config_representer)
+yaml.yaml.add_representer(Bunch, config_representer)

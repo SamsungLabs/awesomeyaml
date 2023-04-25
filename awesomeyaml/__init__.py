@@ -37,7 +37,7 @@ def get_default_safe_flag():
 
 
 from .utils import add_module_properties
-from .namespace import staticproperty
+from .namespace import staticproperty, namespace
 
 
 def _get_version():

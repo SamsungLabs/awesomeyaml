@@ -18,6 +18,7 @@ import copy
 import token
 import pickle
 import tokenize
+import functools
 import contextlib
 import collections.abc as cabc
 
@@ -116,7 +117,28 @@ class AwesomeyamlDumper(yaml.Dumper):
             self.stream.write(' ')
 
 
+def add_constructor(tag, constructor):
+    yaml.add_constructor(tag, constructor, Loader=AwesomeyamlLoader)
+
+
+def add_multi_constructor(tag, constructor):
+    yaml.add_multi_constructor(tag, constructor, Loader=AwesomeyamlLoader)
+
+
+def add_implicit_resolver(tag, regex):
+    yaml.add_implicit_resolver(tag, regex, Loader=AwesomeyamlLoader, Dumper=AwesomeyamlDumper)
+
+
+def add_representer(data_type, representer):
+    yaml.add_representer(data_type, representer, Dumper=AwesomeyamlDumper)
+
+
+def add_multi_representer(data_type, representer):
+    yaml.add_multi_representer(data_type, representer, Dumper=AwesomeyamlDumper)
+
+
 def rethrow_as_parsing_error(func):
+    @functools.wraps(func)
     def impl(*args, **kwargs):
         node = args[2] if len(args) > 2 else args[1]
         with errors.rethrow(errors.ParsingError, node, None, None):
@@ -229,6 +251,9 @@ def _make_node(loader, node, node_type=ConfigNode, kwargs=None, data_arg_name=No
         assert data_arg_name not in kwargs
         kwargs[data_arg_name] = data
         return node_type(idx=loader.context.get_next_stage_idx(), **kwargs)
+
+
+make_node = rethrow_as_parsing_error(_make_node)
 
 
 @rethrow_as_parsing_error
@@ -432,38 +457,38 @@ def _clear_constructor_md(loader, tag_suffix, node):
     return _make_node(loader, node, kwargs=kwargs, node_type=ClearNode)
 
 
-yaml.add_constructor('!del', _del_constructor)
-yaml.add_constructor('!weak', _weak_constructor)
-yaml.add_constructor('!force', _force_constructor)
-yaml.add_constructor('!merge', _merge_constructor)
-yaml.add_constructor('!append', _append_constructor)
-yaml.add_multi_constructor('!metadata:', _metadata_constructor)
-yaml.add_constructor('!include', _include_constructor)
-yaml.add_constructor('!prev', _prev_constructor)
-yaml.add_constructor('!xref', _xref_constructor)
-yaml.add_multi_constructor('!xref:', _xref_constructor_md)
-yaml.add_constructor('!ref', _xref_constructor)
-yaml.add_multi_constructor('!ref:', _xref_constructor_md)
-yaml.add_multi_constructor('!bind:', _bind_constructor) # full bind form: !bind:func_name[:metadata] args_dict
-yaml.add_constructor('!bind', _simple_bind_constructor) # simple argumentless bind from string: !bind func_name
-yaml.add_multi_constructor('!call:', _call_constructor) # full call form: !call:func_name[:metadata] args_dict
-yaml.add_constructor('!call', _simple_call_constructor) # simple argumentless call from string: !call func_name
-yaml.add_multi_constructor('!eval:', _eval_constructor)
-yaml.add_constructor('!eval', _simple_eval_constructor)
-yaml.add_constructor('!fstr', _fstr_constructor)
-yaml.add_implicit_resolver('!fstr', _fstr_regex)
-yaml.add_constructor('!import', _import_constructor)
-yaml.add_constructor('!required', _required_constructor)
-yaml.add_multi_constructor('!required:', _required_constructor_md)
-yaml.add_constructor('!null', _none_constructor)
-yaml.add_multi_constructor('!null:', _none_constructor_md)
-yaml.add_multi_constructor('!path:', _path_constructor)
-yaml.add_constructor('!path', _simple_path_constructor)
-yaml.add_constructor('!new', _new_constructor)
-yaml.add_constructor('!notnew', _notnew_constructor)
-yaml.add_constructor('!unsafe', _unsafe_constructor)
-yaml.add_constructor('!clear', _clear_constructor)
-yaml.add_multi_constructor('!clear:', _clear_constructor_md)
+add_constructor('!del', _del_constructor)
+add_constructor('!weak', _weak_constructor)
+add_constructor('!force', _force_constructor)
+add_constructor('!merge', _merge_constructor)
+add_constructor('!append', _append_constructor)
+add_multi_constructor('!metadata:', _metadata_constructor)
+add_constructor('!include', _include_constructor)
+add_constructor('!prev', _prev_constructor)
+add_constructor('!xref', _xref_constructor)
+add_multi_constructor('!xref:', _xref_constructor_md)
+add_constructor('!ref', _xref_constructor)
+add_multi_constructor('!ref:', _xref_constructor_md)
+add_multi_constructor('!bind:', _bind_constructor) # full bind form: !bind:func_name[:metadata] args_dict
+add_constructor('!bind', _simple_bind_constructor) # simple argumentless bind from string: !bind func_name
+add_multi_constructor('!call:', _call_constructor) # full call form: !call:func_name[:metadata] args_dict
+add_constructor('!call', _simple_call_constructor) # simple argumentless call from string: !call func_name
+add_multi_constructor('!eval:', _eval_constructor)
+add_constructor('!eval', _simple_eval_constructor)
+add_constructor('!fstr', _fstr_constructor)
+add_implicit_resolver('!fstr', _fstr_regex)
+add_constructor('!import', _import_constructor)
+add_constructor('!required', _required_constructor)
+add_multi_constructor('!required:', _required_constructor_md)
+add_constructor('!null', _none_constructor)
+add_multi_constructor('!null:', _none_constructor_md)
+add_multi_constructor('!path:', _path_constructor)
+add_constructor('!path', _simple_path_constructor)
+add_constructor('!new', _new_constructor)
+add_constructor('!notnew', _notnew_constructor)
+add_constructor('!unsafe', _unsafe_constructor)
+add_constructor('!clear', _clear_constructor)
+add_multi_constructor('!clear:', _clear_constructor_md)
 
 
 def _node_representer(dumper, node):
@@ -587,8 +612,9 @@ def _none_representer(dumper, none):
         return dumper.represent_scalar('!null', '', style='')
 
 
-yaml.add_multi_representer(ConfigNode, _node_representer)
-yaml.add_representer(type(None), _none_representer)
+add_multi_representer(ConfigNode, _node_representer)
+add_representer(type(None), _none_representer)
+
 
 def _get_metadata_end(data, beg):
     _beg = beg+2

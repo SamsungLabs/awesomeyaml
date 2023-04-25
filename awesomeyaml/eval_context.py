@@ -70,16 +70,14 @@ class EvalContext(metaclass=NamespaceableMeta):
 
     _default_eval_symbols = {}
 
-    def __init__(self, config_dict, eval_symbols=None):
+    def __init__(self, eval_symbols=None):
         ''' Arguments:
-                config_dict : a `awesomeyaml.nodes.ConfigDict` object to be evaluated,
-                    to construct a single `ConfigDict` from multiple sources
-                    `awesomeyaml.builder.Builder` can be used.
                 eval_symbols : a dict containing symbols which can be used when evaluating
                     ``config_dict``. The values from this argument will be used to update
                     the defaults from :py:meth:`get_default_eval_symbols`.
         '''
-        self.cfg = config_dict
+        self._cfg = None
+        self._ecfg = None
         self._removed_nodes = {}
         self._eval_cache = {}
         self._eval_cache_id = {}
@@ -89,6 +87,22 @@ class EvalContext(metaclass=NamespaceableMeta):
 
         self._require_all_safe = False
         self._eval_stack = []
+
+        self.user_data = None
+
+    @property
+    def cfg(self):
+        if self._cfg is None:
+            raise ValueError('Missing _cfg attribute - method called outside the call to .evaluate(config_dict)?')
+
+        return self._cfg
+
+    @property
+    def ecfg(self):
+        if self._ecfg is None:
+            raise ValueError('Missing _ecfg attribute - method called outside the call to .evaluate(config_dict)?')
+
+        return self._ecfg
 
     @contextlib.contextmanager
     def require_all_safe(self, node, path):
@@ -149,17 +163,28 @@ class EvalContext(metaclass=NamespaceableMeta):
         return evaluated_cfgobj
 
     @errors.api_entry
-    def evaluate(self):
-        ''' Returns:
+    def evaluate(self, config_dict):
+        ''' Arguments:
+                config_dict : a `awesomeyaml.nodes.ConfigDict` object to be evaluated,
+                            to construct a single `ConfigDict` from multiple sources
+                            `awesomeyaml.builder.Builder` can be used.
+            Returns:
                 `awesomeyaml.utils.Bunch` representing evaluated config node.
         '''
+        self._cfg = config_dict
+        self._ecfg = EvalContext.PartialChild(NodePath(), self, self._cfg)
         self._eval_cache.clear()
         self._eval_cache_id.clear()
-        self.ecfg = EvalContext.PartialChild(NodePath(), self, self.cfg)
-        ret = self.evaluate_node(self.cfg)
-        self.ecfg = ret
-        self._eval_cache.clear()
-        self._eval_cache_id.clear()
+        self.user_data = Bunch()
+
+        try:
+            ret = self.evaluate_node(self.cfg)
+        finally:
+            self._eval_cache.clear()
+            self._eval_cache_id.clear()
+            self._cfg = None
+            self._ecfg = None
+
         return ret
 
     @staticmethod
