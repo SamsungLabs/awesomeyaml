@@ -646,7 +646,7 @@ def _get_metadata_end(data, beg):
 
 
 def _get_metadata_content(data):
-    _metadata_tag = re.compile(r'(![a-zA-Z0-9_:.]+){{')
+    _metadata_tag = re.compile(r'(![a-zA-Z0-9_:.()]+){{')
     curr_match = _metadata_tag.search(data)
     while curr_match is not None:
         beg = curr_match.end(1)
@@ -654,7 +654,7 @@ def _get_metadata_content(data):
         end = _get_metadata_end(data, beg)
         if end is None:
             raise ValueError(f'Cannot find the end of a !metadata node which begins at: {curr_match.start()}')
-        
+
         yield beg, end
         curr_match = _metadata_tag.search(data, end+1)
 
