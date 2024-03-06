@@ -559,6 +559,8 @@ In either case, more information can always be found in the provided link to doc
 | `!force` | Changes a node's priority to high | [Merging]() |
 | `!del` | Replaces the content of a matching node on merge | [Merging]() |
 | `!merge` | Merges the content of a matching node on merge | [Merging]() |
+| `!clear` | Clears the content of a matching node on merge (without removing the node itself) | [ClearNode](docs/build/html/awesomeyaml.nodes.clear.html) |
+| `!extend [list]` | Appends to an existing list on merge. Unlike `!append`, this node does not raise exceptions if the target node does not exist or is not a list - it behaves as standard list node in those cases. | [ExtendNode](docs/build/html/awesomeyaml.nodes.extend.html) |
 
 
 ## Contributing

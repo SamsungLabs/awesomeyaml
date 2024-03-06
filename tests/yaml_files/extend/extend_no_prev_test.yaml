@@ -1,0 +1,5 @@
+---
+a: !extend [4]
+
+###EXPECTED
+a: [4]

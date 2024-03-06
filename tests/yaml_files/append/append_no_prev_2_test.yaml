@@ -1,0 +1,8 @@
+---
+b: foo
+---
+a: !append [4]
+
+###ERROR
+awesomeyaml.errors.PremergeError
+Node 'a' does not exist

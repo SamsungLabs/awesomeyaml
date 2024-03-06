@@ -457,6 +457,19 @@ def _clear_constructor_md(loader, tag_suffix, node):
     return _make_node(loader, node, kwargs=kwargs, node_type=ClearNode)
 
 
+@rethrow_as_parsing_error
+def _extend_constructor(loader, node):
+    from .nodes.extend import ExtendNode
+    return _make_node(loader, node, node_type=ExtendNode)
+
+
+@rethrow_as_parsing_error
+def _extend_constructor_md(loader, tag_suffix, node):
+    from .nodes.extend import ExtendNode
+    kwargs = _decode_metadata(tag_suffix)
+    return _make_node(loader, node, kwargs=kwargs, node_type=ExtendNode)
+
+
 add_constructor('!del', _del_constructor)
 add_constructor('!weak', _weak_constructor)
 add_constructor('!force', _force_constructor)
@@ -489,6 +502,8 @@ add_constructor('!notnew', _notnew_constructor)
 add_constructor('!unsafe', _unsafe_constructor)
 add_constructor('!clear', _clear_constructor)
 add_multi_constructor('!clear:', _clear_constructor_md)
+add_constructor('!extend', _extend_constructor)
+add_multi_constructor('!extend:', _extend_constructor_md)
 
 
 def _node_representer(dumper, node):

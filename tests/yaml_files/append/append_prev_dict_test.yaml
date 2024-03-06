@@ -1,0 +1,8 @@
+---
+a: foo
+---
+a: !append [4]
+
+###ERROR
+awesomeyaml.errors.PremergeError
+object has no attribute 'extend'

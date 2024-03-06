@@ -1,0 +1,9 @@
+---
+b: foo
+---
+a: !extend [4]
+
+###EXPECTED
+a: [4]
+b: foo
+

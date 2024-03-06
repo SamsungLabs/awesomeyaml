@@ -18,23 +18,24 @@ from ..namespace import namespace, staticproperty
 from collections.abc import Sequence
 
 
-class AppendNode(ConfigList):
-    ''' A class implementing ``!append`` node.
+class ExtendNode(ConfigList):
+    ''' A class implementing ``!extend`` node.
 
-        The append tag creates a list node which appends its
-        content to another list on merge, instead of overwriting it.
+        The extend tag behaves very similar to the !append tag
+        but does not raises errors if the target list does not
+        exist and/or is not a list.
 
         Supported syntax::
 
-            !append [list]
+            !extend [list]
 
         Merge behaviour:
 
             ==================  =================================
             Case                Behaviour
             ==================  =================================
-            ``A <- Append``     ``return A.extend(Append)``
-            ``None <- Append``  ``raise KeyError``
+            ``A <- Append``     ``return A.extend(Append)`` iff
+                                A.extend can be called
             otherwise           behaves as :py:class:`ConfigList`
             ==================  =================================
 
@@ -49,14 +50,20 @@ class AppendNode(ConfigList):
         if into is None:
             return ConfigList(self)
 
-        node = into.ayns.remove_node(path)
-        if node is None:
-            raise KeyError(f'Node {path!r} does not exist in the previous context (possibly deleted?)')
-        node.extend(self)
-        return node
+        try:
+            node = into.ayns.get_node(path)
+        except KeyError:
+            return ConfigList(self)
+
+        if hasattr(node, 'extend'):
+            node.extend(self)
+            into.ayns.remove_node(path)
+            return node
+
+        return ConfigList(self)
 
     @namespace('ayns')
     @staticproperty
     @staticmethod
     def tag():
-        return '!append'
+        return '!extend'
