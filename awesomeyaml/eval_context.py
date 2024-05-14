@@ -121,14 +121,6 @@ class EvalContext(metaclass=NamespaceableMeta):
             return self._eval_cache[str(path)]
         return self.cfg.ayns.get_node(path, **kwargs)
 
-    def get_evaluated_node(self, nodepath):
-        nodepath = NodePath.get_list_path(nodepath, check_types=False) or NodePath()
-        node = self.ayns.get_node(nodepath)
-        if str(nodepath) in self._eval_cache:
-            return node
-
-        return self.evaluate_node(node, prefix=nodepath)
-
     @errors.api_entry
     def evaluate_node(self, cfgobj, prefix=None):
         if not isinstance(cfgobj, ConfigNode):

@@ -141,7 +141,7 @@ def rethrow_as_parsing_error(func):
     @functools.wraps(func)
     def impl(*args, **kwargs):
         node = args[2] if len(args) > 2 else args[1]
-        with errors.rethrow(errors.ParsingError, node, None, None):
+        with errors.rethrow_point(errors.ParsingError, node, None, None):
             return func(*args, **kwargs)
 
     return impl
@@ -470,6 +470,19 @@ def _extend_constructor_md(loader, tag_suffix, node):
     return _make_node(loader, node, kwargs=kwargs, node_type=ExtendNode)
 
 
+@rethrow_as_parsing_error
+def _rec_constructor(loader, node):
+    from .nodes.recurse import RecurseNode
+    return _make_node(loader, node, node_type=RecurseNode, dict_is_data=False, parse_scalars=False)
+
+
+@rethrow_as_parsing_error
+def _rec_constructor_md(loader, tag_suffix, node):
+    from .nodes.recurse import RecurseNode
+    kwargs = _decode_metadata(tag_suffix)
+    return _make_node(loader, node, kwargs=kwargs, node_type=RecurseNode, dict_is_data=False, parse_scalars=False)
+
+
 add_constructor('!del', _del_constructor)
 add_constructor('!weak', _weak_constructor)
 add_constructor('!force', _force_constructor)
@@ -504,6 +517,8 @@ add_constructor('!clear', _clear_constructor)
 add_multi_constructor('!clear:', _clear_constructor_md)
 add_constructor('!extend', _extend_constructor)
 add_multi_constructor('!extend:', _extend_constructor_md)
+add_constructor('!rec', _rec_constructor)
+add_constructor('!rec:', _rec_constructor_md)
 
 
 def _node_representer(dumper, node):

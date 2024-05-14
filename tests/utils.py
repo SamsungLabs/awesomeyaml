@@ -20,7 +20,7 @@ import traceback
 def setUpModule():
     import os
     import sys
-    new_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
+    new_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'awesomeyaml'))
     sys.path = [new_path] + sys.path
     try:
         import awesomeyaml

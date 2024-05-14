@@ -141,7 +141,7 @@ class UnsafeError(EvalError):
 
 
 @contextlib.contextmanager
-def rethrow(error_type, self, path, other):
+def rethrow_point(error_type, self, path, other):
     try:
         yield
     except error_type as e:

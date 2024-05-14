@@ -1,0 +1,10 @@
+target: 1
+parent: !rec [!fstr 'target{target}.yaml']
+
+
+###EXPECTED
+target: 1
+parent:
+    foo: 1
+    extra:
+        1: yes

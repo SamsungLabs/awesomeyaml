@@ -40,7 +40,7 @@ def decorator_factory(error_type):
             other = args[2] if len(args) > 2 else kwargs.get('other', None)
             if not isinstance(other, ConfigNode):
                 other = None
-            with errors.rethrow(error_type, self, path, other):
+            with errors.rethrow_point(error_type, self, path, other):
                 return func(*args, **kwargs)
 
         return impl

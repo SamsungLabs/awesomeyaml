@@ -1,0 +1,9 @@
+parent: !rec [target2.yaml, target1.yaml]
+
+###EXPECTED
+
+parent:
+    foo: 1
+    extra:
+        1: yes
+        2: yes
